@@ -179,6 +179,11 @@ After startup, the terminal output will display URLs. Look for:
 
 ---
 
+## Diagram
+<img width="624" height="511" alt="Picture1" src="https://github.com/user-attachments/assets/1f3f8a9b-dda9-4d83-87ca-7c73091436d0" />
+
+<img width="624" height="624" alt="Picture2" src="https://github.com/user-attachments/assets/b3ac6f67-491a-44ed-a0ba-05a80f108bb9" />
+
 ## Project Structure
 
 ```
