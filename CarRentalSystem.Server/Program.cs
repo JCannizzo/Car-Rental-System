@@ -1,4 +1,8 @@
+using CarRentalSystem.Data.Contexts;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddNpgsqlDbContext<CarRentalSystemDbContext>("car-rental-system-db");
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
