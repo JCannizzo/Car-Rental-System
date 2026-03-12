@@ -1,12 +1,13 @@
 using CarRentalSystem.Data.Contexts;
 using CarRentalSystem.Data.Models;
+using CarRentalSystem.Server.Extensions;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddNpgsqlDbContext<CarRentalSystemDbContext>("car-rental-system-db");
 
-builder.Services.AddIdentity<CarRentalSystemUser, CarRentalSystemRole>()
-    .AddEntityFrameworkStores<CarRentalSystemDbContext>();
+builder.AddKeycloakAuth();
 
 // Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
@@ -48,6 +49,12 @@ api.MapGet("weatherforecast", () =>
 })
 .CacheOutput(p => p.Expire(TimeSpan.FromSeconds(5)))
 .WithName("GetWeatherForecast");
+
+// Temp protected endpoint to test keycloak
+api.MapGet("bookings", [Authorize(Policy = "CustomerOnly")] () => Results.Ok("auth works!"));
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapDefaultEndpoints();
 
