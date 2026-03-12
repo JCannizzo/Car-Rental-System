@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CarRentalSystem.MigrationService\CarRentalSystem.MigrationService.csproj" />
     <ProjectReference Include="..\CarRentalSystem.Server\CarRentalSystem.Server.csproj" />
   </ItemGroup>
 
@@ -16,5 +17,10 @@
     <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.1.1" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.1.2" />
     <PackageReference Include="Aspire.Hosting.Redis" Version="13.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Controllers\" />
+    <Folder Include="Services\" />
   </ItemGroup>
 </Project>
