@@ -1,184 +1,225 @@
 import { useState, useEffect } from 'react'
-import aspireLogo from '/Aspire.png'
 import './App.css'
 
-interface WeatherForecast {
-  date: string
-  temperatureC: number
-  temperatureF: number
-  summary: string
-}
+const cars = [
+  { id: 1, name: 'Tesla Model S', category: 'Electric', price: 89, seats: 5, transmission: 'Auto', image: '🚗', color: '#C8102E', tag: 'Most Popular' },
+  { id: 2, name: 'BMW M4', category: 'Sport', price: 129, seats: 4, transmission: 'Manual', image: '🏎️', color: '#0066CC', tag: 'Premium' },
+  { id: 3, name: 'Range Rover Sport', category: 'SUV', price: 149, seats: 7, transmission: 'Auto', image: '🚙', color: '#1A5C38', tag: 'Family Pick' },
+  { id: 4, name: 'Porsche 911', category: 'Sport', price: 199, seats: 2, transmission: 'Auto', image: '🏎️', color: '#E8A000', tag: 'Luxury' },
+  { id: 5, name: 'Mercedes V-Class', category: 'Van', price: 109, seats: 8, transmission: 'Auto', image: '🚐', color: '#6B6B6B', tag: 'Group Travel' },
+  { id: 6, name: 'Audi e-tron GT', category: 'Electric', price: 159, seats: 5, transmission: 'Auto', image: '⚡', color: '#BB0A21', tag: 'Eco Choice' },
+]
 
-function App() {
-  const [weatherData, setWeatherData] = useState<WeatherForecast[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [useCelsius, setUseCelsius] = useState(false)
+const categories = ['All', 'Electric', 'Sport', 'SUV', 'Van']
 
-  const fetchWeatherForecast = async () => {
-    setLoading(true)
-    setError(null)
-    
-    try {
-      const response = await fetch('/api/weatherforecast')
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-      
-      const data: WeatherForecast[] = await response.json()
-      setWeatherData(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch weather data')
-      console.error('Error fetching weather forecast:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
+const stats = [
+  { value: '12K+', label: 'Happy Clients' },
+  { value: '340+', label: 'Fleet Vehicles' },
+  { value: '28', label: 'City Locations' },
+  { value: '4.9★', label: 'Average Rating' },
+]
+
+export default function App() {
+  const [activeCategory, setActiveCategory] = useState('All')
+  const [pickupDate, setPickupDate] = useState('')
+  const [returnDate, setReturnDate] = useState('')
+  const [location, setLocation] = useState('')
+  const [heroVisible, setHeroVisible] = useState(false)
+  const [bookedCar, setBookedCar] = useState<number | null>(null)
 
   useEffect(() => {
-    fetchWeatherForecast()
+    const timer = setTimeout(() => setHeroVisible(true), 100)
+    return () => clearTimeout(timer)
   }, [])
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString(undefined, { 
-      weekday: 'short', 
-      month: 'short', 
-      day: 'numeric' 
-    })
-  }
+  const filtered = activeCategory === 'All' ? cars : cars.filter(c => c.category === activeCategory)
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <a 
-          href="https://aspire.dev" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          aria-label="Visit Aspire website (opens in new tab)"
-          className="logo-link"
-        >
-          <img src={aspireLogo} className="logo" alt="Aspire logo" />
-        </a>
-        <h1 className="app-title">Aspire Starter</h1>
-        <p className="app-subtitle">Modern distributed application development</p>
-      </header>
+    <div className="app">
 
-      <main className="main-content">
-        <section className="weather-section" aria-labelledby="weather-heading">
-          <div className="card">
-            <div className="section-header">
-              <h2 id="weather-heading" className="section-title">Weather Forecast</h2>
-              <div className="header-actions">
-                <fieldset className="toggle-switch" aria-label="Temperature unit selection">
-                  <legend className="visually-hidden">Temperature unit</legend>
-                  <button 
-                    className={`toggle-option ${!useCelsius ? 'active' : ''}`}
-                    onClick={() => setUseCelsius(false)}
-                    aria-pressed={!useCelsius}
-                    type="button"
-                  >
-                    <span aria-hidden="true">°F</span>
-                    <span className="visually-hidden">Fahrenheit</span>
-                  </button>
-                  <button 
-                    className={`toggle-option ${useCelsius ? 'active' : ''}`}
-                    onClick={() => setUseCelsius(true)}
-                    aria-pressed={useCelsius}
-                    type="button"
-                  >
-                    <span aria-hidden="true">°C</span>
-                    <span className="visually-hidden">Celsius</span>
-                  </button>
-                </fieldset>
-                <button 
-                  className="refresh-button"
-                  onClick={fetchWeatherForecast} 
-                  disabled={loading}
-                  aria-label={loading ? 'Loading weather forecast' : 'Refresh weather forecast'}
-                  type="button"
-                >
-                  <svg 
-                    className={`refresh-icon ${loading ? 'spinning' : ''}`}
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2"
-                    aria-hidden="true"
-                    focusable="false"
-                  >
-                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                  </svg>
-                  <span>{loading ? 'Loading...' : 'Refresh'}</span>
+      {/* NAV */}
+      <nav className="nav">
+        <div className="nav-inner">
+          <a href="#" className="nav-logo">
+            <span className="logo-mark">V</span>
+            <span className="logo-text">VELOCE</span>
+          </a>
+          <ul className="nav-links">
+            <li><a href="#fleet">Fleet</a></li>
+            <li><a href="#why">Why Us</a></li>
+            <li><a href="#locations">Locations</a></li>
+          </ul>
+          <a href="#book" className="nav-cta">Book Now</a>
+        </div>
+      </nav>
+
+      {/* HERO */}
+      <section className={`hero ${heroVisible ? 'visible' : ''}`}>
+        <div className="hero-bg">
+          <div className="hero-stripe s1" />
+          <div className="hero-stripe s2" />
+          <div className="hero-stripe s3" />
+          <div className="hero-orb o1" />
+          <div className="hero-orb o2" />
+        </div>
+        <div className="hero-content">
+          <div className="hero-eyebrow">Premium Car Rental</div>
+          <h1 className="hero-heading">
+            Drive<br />
+            <span className="hero-accent">Without</span><br />
+            Limits.
+          </h1>
+          <p className="hero-sub">
+            From city cruisers to weekend warriors — every journey starts here.
+          </p>
+        </div>
+        <div className="hero-visual">
+          <div className="car-showcase">
+            <div className="showcase-glow" />
+            <span className="showcase-emoji">🏎️</span>
+            <div className="showcase-shadow" />
+          </div>
+        </div>
+
+        {/* BOOKING BAR */}
+        <div className="booking-bar" id="book">
+          <div className="booking-field">
+            <label>Pick-up Location</label>
+            <input type="text" placeholder="City or airport..." value={location} onChange={e => setLocation(e.target.value)} />
+          </div>
+          <div className="booking-divider" />
+          <div className="booking-field">
+            <label>Pick-up Date</label>
+            <input type="date" value={pickupDate} onChange={e => setPickupDate(e.target.value)} />
+          </div>
+          <div className="booking-divider" />
+          <div className="booking-field">
+            <label>Return Date</label>
+            <input type="date" value={returnDate} onChange={e => setReturnDate(e.target.value)} />
+          </div>
+          <button className="booking-submit">
+            <span>Search Cars</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+          </button>
+        </div>
+      </section>
+
+      {/* STATS */}
+      <section className="stats-bar">
+        {stats.map(s => (
+          <div key={s.label} className="stat">
+            <span className="stat-value">{s.value}</span>
+            <span className="stat-label">{s.label}</span>
+          </div>
+        ))}
+      </section>
+
+      {/* FLEET */}
+      <section className="fleet" id="fleet">
+        <div className="section-header">
+          <div className="section-eyebrow">Our Fleet</div>
+          <h2 className="section-title">Choose Your Ride</h2>
+          <div className="filter-tabs">
+            {categories.map(cat => (
+              <button key={cat} className={`filter-tab ${activeCategory === cat ? 'active' : ''}`} onClick={() => setActiveCategory(cat)}>
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="cars-grid">
+          {filtered.map((car, i) => (
+            <article
+              key={car.id}
+              className={`car-card ${bookedCar === car.id ? 'booked' : ''}`}
+              style={{ '--card-color': car.color, '--delay': `${i * 0.07}s` } as React.CSSProperties}
+            >
+              <div className="card-tag">{car.tag}</div>
+              <div className="card-visual">
+                <div className="card-glow" />
+                <span className="card-emoji">{car.image}</span>
+              </div>
+              <div className="card-info">
+                <div className="card-category">{car.category}</div>
+                <h3 className="card-name">{car.name}</h3>
+                <div className="card-specs">
+                  <span>👤 {car.seats} seats</span>
+                  <span>⚙️ {car.transmission}</span>
+                </div>
+              </div>
+              <div className="card-footer">
+                <div className="card-price">
+                  <span className="price-amount">${car.price}</span>
+                  <span className="price-unit">/day</span>
+                </div>
+                <button className="rent-btn" onClick={() => setBookedCar(car.id)}>
+                  {bookedCar === car.id ? '✓ Reserved' : 'Rent Now'}
                 </button>
               </div>
-            </div>
-            
-            {error && (
-              <div className="error-message" role="alert" aria-live="polite">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                <span>{error}</span>
-              </div>
-            )}
-            
-            {loading && weatherData.length === 0 && (
-              <div className="loading-skeleton" role="status" aria-live="polite" aria-label="Loading weather data">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="skeleton-row" aria-hidden="true" />
-                ))}
-                <span className="visually-hidden">Loading weather forecast data...</span>
-              </div>
-            )}
-            
-            {weatherData.length > 0 && (
-              <div className="weather-grid">
-                {weatherData.map((forecast, index) => (
-                  <article key={index} className="weather-card" aria-label={`Weather for ${formatDate(forecast.date)}`}>
-                    <h3 className="weather-date">
-                      <time dateTime={forecast.date}>{formatDate(forecast.date)}</time>
-                    </h3>
-                    <p className="weather-summary">{forecast.summary}</p>
-                    <div className="weather-temps" aria-label={`Temperature: ${useCelsius ? forecast.temperatureC : forecast.temperatureF} degrees ${useCelsius ? 'Celsius' : 'Fahrenheit'}`}>
-                      <div className="temp-group">
-                        <span className="temp-value" aria-hidden="true">
-                          {useCelsius ? forecast.temperatureC : forecast.temperatureF}°
-                        </span>
-                        <span className="temp-unit" aria-hidden="true">{useCelsius ? 'Celsius' : 'Fahrenheit'}</span>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
-      </main>
+            </article>
+          ))}
+        </div>
+      </section>
 
-      <footer className="app-footer">
-        <nav aria-label="Footer navigation">
-          <a href="https://aspire.dev" target="_blank" rel="noopener noreferrer">
-            Learn more about Aspire<span className="visually-hidden"> (opens in new tab)</span>
-          </a>
-          <a 
-            href="https://github.com/dotnet/aspire" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="github-link"
-            aria-label="View Aspire on GitHub (opens in new tab)"
-          >
-            <img src="/github.svg" alt="" width="24" height="24" aria-hidden="true" />
-            <span className="visually-hidden">GitHub</span>
-          </a>
-        </nav>
+      {/* WHY US */}
+      <section className="why" id="why">
+        <div className="why-inner">
+          <div className="why-text">
+            <div className="section-eyebrow">Why Veloce</div>
+            <h2 className="section-title">The Smarter<br />Way to Rent</h2>
+            <p className="why-desc">No hidden fees. No long queues. Just a seamless experience from booking to keys in hand.</p>
+            <ul className="why-list">
+              {[
+                ['🔑', 'Instant Confirmation', 'Reserve online in under 60 seconds.'],
+                ['🛡️', 'Full Insurance Coverage', 'Drive with complete peace of mind.'],
+                ['📍', '24/7 Roadside Assist', "We're always a call away, day or night."],
+                ['💳', 'No Hidden Fees', 'The price you see is the price you pay.'],
+              ].map(([icon, title, desc]) => (
+                <li key={title as string} className="why-item">
+                  <span className="why-icon">{icon}</span>
+                  <div>
+                    <strong>{title}</strong>
+                    <p>{desc}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="why-visual">
+          </div>
+        </div>
+      </section>
+
+      {/* CTA BANNER */}
+      <section className="cta-banner">
+        <div className="cta-inner">
+          <h2>Ready to hit the road?</h2>
+          <p>First rental? Use code <strong>VELOCE20</strong> for 20% off.</p>
+          <a href="#book" className="cta-button">Get Started →</a>
+        </div>
+        <div className="cta-bg-emoji">🏎️</div>
+      </section>
+
+      {/* FOOTER */}
+      <footer className="footer">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span className="logo-mark">V</span>
+              <span className="logo-text">VELOCE</span>
+            </div>
+            <p>Premium car rentals for every journey.</p>
+          </div>
+          <div className="footer-links">
+            <div><strong>Company</strong><a href="#">About</a><a href="#">Careers</a><a href="#">Press</a></div>
+            <div><strong>Support</strong><a href="#">Help Center</a><a href="#">Contact</a><a href="#">Locations</a></div>
+            <div><strong>Legal</strong><a href="#">Privacy</a><a href="#">Terms</a><a href="#">Cookies</a></div>
+          </div>
+        </div>
       </footer>
     </div>
   )
 }
-
-export default App
