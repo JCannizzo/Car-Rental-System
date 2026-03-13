@@ -1,5 +1,7 @@
 using CarRentalSystem.Data.Contexts;
+using CarRentalSystem.Data.Models;
 using CarRentalSystem.MigrationService;
+using Microsoft.EntityFrameworkCore;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddHostedService<MigrationWorker>();
