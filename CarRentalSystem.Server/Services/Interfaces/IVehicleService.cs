@@ -10,6 +10,7 @@ public interface IVehicleService
     Task<List<VehicleDto>> GetAvailableAsync(VehicleQueryParams query);
     
     // Admin Dashboard
+    // Methods below is implemented yet. Implement it when creating admin dashboard.
     Task<List<VehicleDto>> GetAllAsync(); // TODO: Add pagination
     Task<VehicleDto> CreateAsync(); // TODO: Create CreateVehicleDto
     Task<VehicleDto> UpdateAsync(Guid id); // TODO: Create UpdateVehicleDto
