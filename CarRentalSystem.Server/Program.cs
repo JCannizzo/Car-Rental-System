@@ -1,68 +1,35 @@
 using CarRentalSystem.Data.Contexts;
-using CarRentalSystem.Data.Models;
 using CarRentalSystem.Server.Extensions;
-using Microsoft.AspNetCore.Authorization;
+using CarRentalSystem.Server.Services;
+using CarRentalSystem.Server.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddControllers();
 builder.AddNpgsqlDbContext<CarRentalSystemDbContext>("car-rental-system-db");
-
 builder.AddKeycloakAuth();
-
-// Add service defaults & Aspire client integrations.
 builder.AddServiceDefaults();
 builder.AddRedisClientBuilder("cache")
     .WithOutputCache();
 
-// Add services to the container.
 builder.Services.AddProblemDetails();
-
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.AddScoped<IVehicleService, VehicleService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
-
+app.UseFileServer();
 app.UseOutputCache();
-
-string[] summaries = ["Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"];
-
-var api = app.MapGroup("/api");
-api.MapGet("weatherforecast", () =>
-{
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.CacheOutput(p => p.Expire(TimeSpan.FromSeconds(5)))
-.WithName("GetWeatherForecast");
-
-// Temp protected endpoint to test keycloak
-api.MapGet("bookings", [Authorize(Policy = "CustomerOnly")] () => Results.Ok("auth works!"));
-
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapDefaultEndpoints();
-
-app.UseFileServer();
+app.MapControllers();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

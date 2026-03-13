@@ -20,11 +20,16 @@ public class MigrationWorker(IServiceProvider serviceProvider, IHostApplicationL
             var dbContext = scope.ServiceProvider.GetRequiredService<CarRentalSystemDbContext>();
 
             await RunMigrationAsync(dbContext, cancellationToken);
+            await VehicleSeeder.SeedAsync(dbContext, cancellationToken);
         }
         catch (Exception ex)
         {
             activity?.AddException(ex);
             throw;
+        }
+        finally
+        {
+            hostApplicationLifetime.StopApplication();
         }
     }
 
