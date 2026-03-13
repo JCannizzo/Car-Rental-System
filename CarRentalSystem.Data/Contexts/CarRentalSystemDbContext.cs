@@ -1,3 +1,4 @@
+using CarRentalSystem.Data.Models;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,4 +10,7 @@ public class CarRentalSystemDbContext : IdentityDbContext
     {
         
     }
+    
+    public DbSet<Vehicle> Vehicles { get; set; }
+    public DbSet<Booking> Bookings { get; set; }
 }
