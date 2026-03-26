@@ -15,6 +15,8 @@ builder.AddRedisClientBuilder("cache")
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<IVehicleService, VehicleService>();
+builder.Services.AddScoped<IBookingService, BookingService>();
+builder.Services.AddScoped<IPaymentService, StubPaymentService>();
 
 var app = builder.Build();
 
