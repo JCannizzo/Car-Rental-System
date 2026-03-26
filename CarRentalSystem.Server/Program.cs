@@ -2,6 +2,7 @@ using CarRentalSystem.Data.Contexts;
 using CarRentalSystem.Server.Extensions;
 using CarRentalSystem.Server.Services;
 using CarRentalSystem.Server.Services.Interfaces;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 app.UseFileServer();
 app.UseOutputCache();
