@@ -14,7 +14,20 @@ builder.AddRedisClientBuilder("cache")
     .WithOutputCache();
 
 builder.Services.AddProblemDetails();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, ct) =>
+    {
+        document.Info.Title = "Car Rental System API";
+        document.Info.Version = "v1";
+        document.Info.Description =
+            "REST API for the Car Rental System. Supports searching available vehicles, " +
+            "creating and managing bookings, and processing payments. " +
+            "Guest bookings are allowed without authentication. " +
+            "Authenticated customers can view their booking history.";
+        return Task.CompletedTask;
+    });
+});
 builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IPaymentService, StubPaymentService>();
