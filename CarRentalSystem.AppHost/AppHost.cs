@@ -21,7 +21,12 @@ var server = builder.AddProject<Projects.CarRentalSystem_Server>("server")
     .WithReference(keycloak)
     .WaitFor(keycloak)
     .WithHttpHealthCheck("/health")
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    .WithUrlForEndpoint("https", url =>
+    {
+        url.DisplayText = "Scalar API Docs";
+        url.Url = "/scalar/v1";
+    });
 
 var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
     .WithExternalHttpEndpoints()
