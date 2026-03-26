@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 obj/
+
+# TanStack Router generated route tree
+src/routeTree.gen.ts
