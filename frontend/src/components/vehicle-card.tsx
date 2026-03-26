@@ -1,6 +1,19 @@
 import { Fuel, Settings2, Users } from "lucide-react";
 
-function VehicleCard({ vehicle }: { vehicle: any }) {
+function VehicleCard({
+  vehicle,
+}: {
+  vehicle: {
+    make: string;
+    model: string;
+    category: string;
+    seats: number;
+    transmission: string;
+    fuelType: string;
+    pricePerDay: number;
+    imageUrl: string;
+  };
+}) {
   return (
     <div className="flex items-center gap-4 p-4 bg-card hover:bg-muted/50 transition-colors">
       <img
