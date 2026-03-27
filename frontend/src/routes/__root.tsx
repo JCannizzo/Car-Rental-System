@@ -11,10 +11,10 @@ export const Route = createRootRoute({
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <a href="/" className="flex items-center gap-2">
+            <Link to="/" className="flex items-center gap-2">
               <Car className="h-6 w-6" />
               <span className="font-semibold text-lg">Car Rental</span>
-            </a>
+            </Link>
             <div className="flex items-center gap-3">
               <Link to="/auth">
                 <Button variant="ghost" size="sm">
