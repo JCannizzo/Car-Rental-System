@@ -8,16 +8,18 @@ import {
 } from "@/components/ui/popover";
 import VehicleCard from "@/components/vehicle-card";
 import { fetchVehicles } from "@/lib/api";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { addDays, format } from "date-fns";
 import { CalendarIcon, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 export const Route = createFileRoute("/")({
   component: Index,
 });
+
+const PAGE_SIZE = 20;
 
 function Index() {
   const [date, setDate] = useState<DateRange | undefined>({
@@ -26,14 +28,47 @@ function Index() {
   });
 
   const {
-    data: vehicles,
+    data,
     isLoading,
     isError,
     error,
-  } = useQuery({
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ["vehicles"],
-    queryFn: fetchVehicles,
+    queryFn: ({ pageParam }) =>
+      fetchVehicles({ cursor: pageParam, pageSize: PAGE_SIZE }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
+
+  const vehicles = data?.pages.flatMap((page) => page.items) ?? [];
+  const totalCount = data?.pages[0]?.totalCount ?? 0;
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const handleIntersect = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      const [entry] = entries;
+      if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    },
+    [fetchNextPage, hasNextPage, isFetchingNextPage],
+  );
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(handleIntersect, {
+      rootMargin: "200px",
+    });
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [handleIntersect]);
 
   return (
     <>
@@ -94,16 +129,30 @@ function Index() {
             </p>
           </div>
         )}
-        {vehicles && (
+        {data && (
           <>
             <p className="text-sm text-muted-foreground mb-4">
-              {vehicles.length} Available Cars
+              {totalCount} Available Cars
             </p>
             <div className="flex flex-col divide-y divide-border border border-border rounded-lg overflow-hidden">
               {vehicles.map((car) => (
                 <VehicleCard key={car.id} vehicle={car} />
               ))}
             </div>
+
+            <div ref={sentinelRef} className="h-1" />
+
+            {isFetchingNextPage && (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!hasNextPage && vehicles.length > 0 && (
+              <p className="text-center text-sm text-muted-foreground py-6">
+                You've reached the end
+              </p>
+            )}
           </>
         )}
       </main>

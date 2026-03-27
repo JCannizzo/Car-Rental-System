@@ -15,8 +15,30 @@ export interface Vehicle {
   imageUrlFront: string;
 }
 
-export async function fetchVehicles(): Promise<Vehicle[]> {
-  const response = await fetch("/api/Vehicle");
+export interface PaginatedResult<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  totalCount: number;
+}
+
+export interface VehicleQueryParams {
+  cursor?: string;
+  pageSize?: number;
+}
+
+export async function fetchVehicles(
+  params: VehicleQueryParams = {},
+): Promise<PaginatedResult<Vehicle>> {
+  const searchParams = new URLSearchParams();
+
+  if (params.cursor) searchParams.set("Cursor", params.cursor);
+  if (params.pageSize) searchParams.set("PageSize", String(params.pageSize));
+
+  const query = searchParams.toString();
+  const url = `/api/Vehicle${query ? `?${query}` : ""}`;
+
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Failed to fetch vehicles");
   }

@@ -1,3 +1,4 @@
+using System.Text;
 using CarRentalSystem.Data.Contexts;
 using CarRentalSystem.Data.Models;
 using CarRentalSystem.Server.DTOs;
@@ -8,6 +9,8 @@ namespace CarRentalSystem.Server.Services;
 
 public class VehicleService : IVehicleService
 {
+    private const int MaxPageSize = 50;
+
     private readonly ILogger<VehicleService> _logger;
     private readonly CarRentalSystemDbContext _dbContext;
     
@@ -40,11 +43,14 @@ public class VehicleService : IVehicleService
         };
     }
 
-    public async Task<List<VehicleDto>> GetAvailableAsync(VehicleQueryParams query)
+    public async Task<PaginatedResult<VehicleDto>> GetAvailableAsync(VehicleQueryParams query)
     {
+        var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
+
         var q = _dbContext.Vehicles
             .Where(v => v.VehicleStatus == VehicleStatus.Active);
 
+        // Filters
         if (query.Category.HasValue)
             q = q.Where(v => v.Category == query.Category);
         if (query.MinSeats.HasValue)
@@ -53,6 +59,8 @@ public class VehicleService : IVehicleService
             q = q.Where(v => v.PricePerDay <= query.MaxPricePerDay);
         if (query.TransmissionType != null)
             q = q.Where(v => v.Transmission == query.TransmissionType);
+        if (query.FuelType != null)
+            q = q.Where(v => v.FuelType == query.FuelType);
 
         if (query is { StartDate: not null, EndDate: not null })
         {
@@ -69,7 +77,21 @@ public class VehicleService : IVehicleService
             q = q.Where(v => !bookedIds.Contains(v.Id));
         }
 
-        return await q
+        var totalCount = await q.CountAsync();
+
+        // Cursor-based pagination
+        if (query.Cursor != null)
+        {
+            var (cursorPrice, cursorId) = DecodeCursor(query.Cursor);
+            q = q.Where(v =>
+                v.PricePerDay > cursorPrice ||
+                (v.PricePerDay == cursorPrice && v.Id.CompareTo(cursorId) > 0));
+        }
+
+        var items = await q
+            .OrderBy(v => v.PricePerDay)
+            .ThenBy(v => v.Id)
+            .Take(pageSize + 1)
             .Select(v => new VehicleDto
             {
                 Id = v.Id,
@@ -82,12 +104,52 @@ public class VehicleService : IVehicleService
                 Seats = v.Seats,
                 Doors = v.Doors,
                 PricePerDay = v.PricePerDay,
-                Mileage =  v.Mileage,
+                Mileage = v.Mileage,
                 Features = v.Features,
                 ImageUrl = v.ImageUrl,
                 ImageUrlFront = v.ImageUrlFront,
             })
             .ToListAsync();
+
+        var hasMore = items.Count > pageSize;
+        if (hasMore)
+            items.RemoveAt(items.Count - 1);
+
+        string? nextCursor = null;
+        if (hasMore && items.Count > 0)
+        {
+            var last = items[^1];
+            nextCursor = EncodeCursor(last.PricePerDay, last.Id);
+        }
+
+        return new PaginatedResult<VehicleDto>
+        {
+            Items = items,
+            NextCursor = nextCursor,
+            HasMore = hasMore,
+            TotalCount = totalCount,
+        };
+    }
+
+    // Cursor format: Base64("{pricePerDay}|{id}")
+    private static string EncodeCursor(decimal price, Guid id)
+    {
+        var raw = $"{price}|{id}";
+        return Convert.ToBase64String(Encoding.UTF8.GetBytes(raw));
+    }
+
+    private static (decimal Price, Guid Id) DecodeCursor(string cursor)
+    {
+        try
+        {
+            var raw = Encoding.UTF8.GetString(Convert.FromBase64String(cursor));
+            var parts = raw.Split('|', 2);
+            return (decimal.Parse(parts[0]), Guid.Parse(parts[1]));
+        }
+        catch
+        {
+            throw new ArgumentException("Invalid pagination cursor.");
+        }
     }
 
     public Task<List<VehicleDto>> GetAllAsync()

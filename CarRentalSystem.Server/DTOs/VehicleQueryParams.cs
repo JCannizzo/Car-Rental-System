@@ -28,4 +28,13 @@ public class VehicleQueryParams
 
     /// <summary>Maximum daily rental price in USD.</summary>
     public decimal? MaxPricePerDay { get; set; }
+
+    /// <summary>
+    /// Opaque cursor returned from a previous response. Pass this to fetch the next page.
+    /// When omitted, results start from the beginning.
+    /// </summary>
+    public string? Cursor { get; set; }
+
+    /// <summary>Number of results per page (default 20, max 50).</summary>
+    public int PageSize { get; set; } = 20;
 }
