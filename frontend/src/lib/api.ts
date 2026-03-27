@@ -69,9 +69,6 @@ export interface CreateBookingRequest {
   vehicleId: string;
   startDate: string; // yyyy-MM-dd
   endDate: string; // yyyy-MM-dd
-  guestName: string;
-  guestEmail: string;
-  guestPhone?: string;
 }
 
 export interface BookingConfirmation {

@@ -2,22 +2,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
-import {
-  createBooking,
-  fetchVehicle,
-  type CreateBookingRequest,
-  type Vehicle,
-} from "@/lib/api";
+import { createBooking, fetchVehicle, type Vehicle } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { differenceInDays, format, parseISO } from "date-fns";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { addDays, differenceInDays, format, parseISO } from "date-fns";
 import {
   ArrowLeft,
   CalendarIcon,
@@ -48,7 +42,6 @@ export const Route = createFileRoute("/vehicles/$vehicleId")({
 function VehicleDetail() {
   const { vehicleId } = Route.useParams();
   const { startDate: searchStart, endDate: searchEnd } = Route.useSearch();
-  const navigate = useNavigate();
 
   const {
     data: vehicle,
@@ -86,12 +79,6 @@ function VehicleDetail() {
       vehicle={vehicle}
       initialStartDate={searchStart}
       initialEndDate={searchEnd}
-      onBookingCreated={(code) =>
-        navigate({
-          to: "/booking/confirmation/$code",
-          params: { code },
-        })
-      }
     />
   );
 }
@@ -100,12 +87,10 @@ function VehicleDetailContent({
   vehicle,
   initialStartDate,
   initialEndDate,
-  onBookingCreated,
 }: {
   vehicle: Vehicle;
   initialStartDate?: string;
   initialEndDate?: string;
-  onBookingCreated: (code: string) => void;
 }) {
   const [activeImage, setActiveImage] = useState<"side" | "front">("side");
 
@@ -119,53 +104,44 @@ function VehicleDetailContent({
     return undefined;
   });
 
-  const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [dateError, setDateError] = useState<string | null>(null);
 
   const days =
     date?.from && date?.to ? differenceInDays(date.to, date.from) : 0;
   const totalPrice = days * vehicle.pricePerDay;
 
-  const validate = () => {
-    const errors: Record<string, string> = {};
-    if (!date?.from || !date?.to) errors.date = "Select pick-up & return dates";
-    if (days < 1) errors.date = "Minimum rental is 1 day";
-    if (!guestName.trim()) errors.guestName = "Name is required";
-    if (!guestEmail.trim()) errors.guestEmail = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail))
-      errors.guestEmail = "Enter a valid email";
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    setDateError(null);
+
+    if (!date?.from || !date?.to || days < 1) {
+      setDateError("Select pick-up & return dates");
+      return;
+    }
 
     setIsSubmitting(true);
     setSubmitError(null);
 
-    const payload: CreateBookingRequest = {
-      vehicleId: vehicle.id,
-      startDate: format(date!.from!, "yyyy-MM-dd"),
-      endDate: format(date!.to!, "yyyy-MM-dd"),
-      guestName: guestName.trim(),
-      guestEmail: guestEmail.trim(),
-      guestPhone: guestPhone.trim() || undefined,
-    };
-
     try {
-      const result = await createBooking(payload);
-      onBookingCreated(result.confirmationCode);
+      const result = await createBooking({
+        vehicleId: vehicle.id,
+        startDate: format(date.from, "yyyy-MM-dd"),
+        endDate: format(date.to, "yyyy-MM-dd"),
+      });
+
+      // Redirect to Stripe Checkout
+      if (result.checkoutUrl) {
+        window.location.href = result.checkoutUrl;
+      } else {
+        // Fallback if no checkout URL (e.g. Stripe not configured)
+        window.location.href = `/booking/confirmation/${result.confirmationCode}`;
+      }
     } catch (err) {
       setSubmitError(
         err instanceof Error ? err.message : "Something went wrong",
       );
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -197,7 +173,6 @@ function VehicleDetailContent({
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
-        {/* Left column - Image & details */}
         <div className="space-y-6">
           <div className="rounded-xl overflow-hidden border border-border bg-muted/30">
             <img
@@ -206,8 +181,6 @@ function VehicleDetailContent({
               className="w-full aspect-[16/10] object-cover"
             />
           </div>
-
-          {/* Image toggle */}
           <div className="flex gap-2">
             <button
               onClick={() => setActiveImage("side")}
@@ -238,8 +211,6 @@ function VehicleDetailContent({
               />
             </button>
           </div>
-
-          {/* Specs grid */}
           <div>
             <h2 className="text-sm font-medium text-muted-foreground mb-3">
               Specifications
@@ -261,8 +232,6 @@ function VehicleDetailContent({
               ))}
             </div>
           </div>
-
-          {/* Features */}
           {vehicle.features.length > 0 && (
             <div>
               <h2 className="text-sm font-medium text-muted-foreground mb-3">
@@ -278,8 +247,6 @@ function VehicleDetailContent({
             </div>
           )}
         </div>
-
-        {/* Right column - Header + Booking form */}
         <div className="lg:sticky lg:top-[80px] lg:self-start space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -289,9 +256,7 @@ function VehicleDetailContent({
               {vehicle.year} {vehicle.make} {vehicle.model}
             </h1>
             <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-3xl font-bold">
-                ${vehicle.pricePerDay}
-              </span>
+              <span className="text-3xl font-bold">${vehicle.pricePerDay}</span>
               <span className="text-muted-foreground">/day</span>
             </div>
           </div>
@@ -332,10 +297,11 @@ function VehicleDetailContent({
                     selected={date}
                     onSelect={setDate}
                     numberOfMonths={2}
+                    disabled={{ before: addDays(new Date(), 1) }}
                   />
                 </PopoverContent>
               </Popover>
-              {fieldErrors.date && <FieldError>{fieldErrors.date}</FieldError>}
+              {dateError && <FieldError>{dateError}</FieldError>}
             </Field>
 
             {days > 0 && (
@@ -354,51 +320,6 @@ function VehicleDetailContent({
               </div>
             )}
 
-            <Field>
-              <FieldLabel htmlFor="guestName">Full Name</FieldLabel>
-              <Input
-                id="guestName"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                placeholder="John Doe"
-                aria-invalid={!!fieldErrors.guestName}
-              />
-              {fieldErrors.guestName && (
-                <FieldError>{fieldErrors.guestName}</FieldError>
-              )}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="guestEmail">Email</FieldLabel>
-              <Input
-                id="guestEmail"
-                type="email"
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                placeholder="john@example.com"
-                aria-invalid={!!fieldErrors.guestEmail}
-              />
-              {fieldErrors.guestEmail && (
-                <FieldError>{fieldErrors.guestEmail}</FieldError>
-              )}
-            </Field>
-
-            <Field>
-              <FieldLabel htmlFor="guestPhone">
-                Phone{" "}
-                <span className="text-muted-foreground font-normal">
-                  (optional)
-                </span>
-              </FieldLabel>
-              <Input
-                id="guestPhone"
-                type="tel"
-                value={guestPhone}
-                onChange={(e) => setGuestPhone(e.target.value)}
-                placeholder="(555) 123-4567"
-              />
-            </Field>
-
             {submitError && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {submitError}
@@ -414,7 +335,7 @@ function VehicleDetailContent({
               {isSubmitting ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Booking...
+                  Redirecting to checkout...
                 </>
               ) : (
                 <>
@@ -423,6 +344,10 @@ function VehicleDetailContent({
                 </>
               )}
             </Button>
+
+            <p className="text-xs text-center text-muted-foreground">
+              You'll be redirected to Stripe to complete payment
+            </p>
           </form>
         </div>
       </div>

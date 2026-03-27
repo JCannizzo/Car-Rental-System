@@ -16,10 +16,12 @@ namespace CarRentalSystem.Server.Controllers;
 public class BookingsController : ControllerBase
 {
     private readonly IBookingService _bookingService;
+    private readonly IConfiguration _config;
 
-    public BookingsController(IBookingService bookingService)
+    public BookingsController(IBookingService bookingService, IConfiguration config)
     {
         _bookingService = bookingService;
+        _config = config;
     }
 
     /// <summary>
@@ -61,17 +63,11 @@ public class BookingsController : ControllerBase
             userId = parsedUserId;
         }
 
-        if (!userId.HasValue)
-        {
-            if (string.IsNullOrWhiteSpace(dto.GuestName) || string.IsNullOrWhiteSpace(dto.GuestEmail))
-            {
-                return BadRequest(new { error = "Guest bookings require GuestName and GuestEmail." });
-            }
-        }
+        var frontendUrl = _config["FrontendUrl"] ?? $"{Request.Scheme}://{Request.Host}";
 
         try
         {
-            var confirmation = await _bookingService.CreateBookingAsync(dto, userId);
+            var confirmation = await _bookingService.CreateBookingAsync(dto, userId, frontendUrl);
             return CreatedAtAction(
                 nameof(GetByConfirmationCode),
                 new { code = confirmation.ConfirmationCode },
