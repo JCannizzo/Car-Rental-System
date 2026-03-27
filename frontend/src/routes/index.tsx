@@ -516,7 +516,12 @@ function Index() {
             ) : (
               <div className="flex flex-col divide-y divide-border border border-border rounded-lg overflow-hidden">
                 {vehicles.map((car) => (
-                  <VehicleCard key={car.id} vehicle={car} />
+                  <VehicleCard
+                    key={car.id}
+                    vehicle={car}
+                    startDate={filters.startDate}
+                    endDate={filters.endDate}
+                  />
                 ))}
               </div>
             )}
