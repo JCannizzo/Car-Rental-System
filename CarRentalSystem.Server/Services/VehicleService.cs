@@ -64,8 +64,8 @@ public class VehicleService : IVehicleService
 
         if (query is { StartDate: not null, EndDate: not null })
         {
-            var start = query.StartDate.Value.ToDateTime(TimeOnly.MinValue);
-            var end = query.EndDate.Value.ToDateTime(TimeOnly.MinValue);
+            var start = query.StartDate.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            var end = query.EndDate.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
             
             var bookedIds = _dbContext.Bookings
                 .Where(b =>

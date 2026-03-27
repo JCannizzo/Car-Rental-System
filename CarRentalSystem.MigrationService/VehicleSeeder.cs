@@ -90,7 +90,7 @@ public static class VehicleSeeder
             ImageUrl = Img("mazda", "mazda6"), ImageUrlFront = Img("mazda", "mazda6", angle: "front") },
 
         new() { Id = Guid.NewGuid(), Make = "Nissan", Model = "Altima", Year = 2023, Category = VehicleCategory.Sedan,
-            Transmission = "CVT", FuelType = "Petrol", Seats = 5, Doors = 4, PricePerDay = 52,
+            Transmission = "Automatic", FuelType = "Petrol", Seats = 5, Doors = 4, PricePerDay = 52,
             Mileage = 10000, LicensePlate = "SED-005", VehicleStatus = VehicleStatus.Active,
             Features = ["Bluetooth", "ProPilot Assist", "Android Auto", "Backup Camera"],
             ImageUrl = Img("nissan", "altima"), ImageUrlFront = Img("nissan", "altima", angle: "front") },
@@ -118,7 +118,7 @@ public static class VehicleSeeder
     private static List<Vehicle> GetSuvVehicles() =>
     [
         new() { Id = Guid.NewGuid(), Make = "Honda", Model = "CR-V", Year = 2023, Category = VehicleCategory.SUV,
-            Transmission = "CVT", FuelType = "Hybrid", Seats = 5, Doors = 4, PricePerDay = 73,
+            Transmission = "Automatic", FuelType = "Hybrid", Seats = 5, Doors = 4, PricePerDay = 73,
             Mileage = 7000, LicensePlate = "SUV-001", VehicleStatus = VehicleStatus.Active,
             Features = ["Bluetooth", "Honda Sensing", "Panoramic Roof", "Wireless CarPlay"],
             ImageUrl = Img("honda", "cr-v"), ImageUrlFront = Img("honda", "cr-v", angle: "front") },
@@ -142,7 +142,7 @@ public static class VehicleSeeder
             ImageUrl = Img("mazda", "cx-5"), ImageUrlFront = Img("mazda", "cx-5", angle: "front") },
 
         new() { Id = Guid.NewGuid(), Make = "Nissan", Model = "Rogue", Year = 2023, Category = VehicleCategory.SUV,
-            Transmission = "CVT", FuelType = "Petrol", Seats = 5, Doors = 4, PricePerDay = 69,
+            Transmission = "Automatic", FuelType = "Petrol", Seats = 5, Doors = 4, PricePerDay = 69,
             Mileage = 8000, LicensePlate = "SUV-005", VehicleStatus = VehicleStatus.Active,
             Features = ["Bluetooth", "ProPilot Assist", "3-Zone Climate", "Panoramic Moonroof"],
             ImageUrl = Img("nissan", "rogue"), ImageUrlFront = Img("nissan", "rogue", angle: "front") },
@@ -286,7 +286,7 @@ public static class VehicleSeeder
             ImageUrl = Img("honda", "odyssey"), ImageUrlFront = Img("honda", "odyssey", angle: "front") },
 
         new() { Id = Guid.NewGuid(), Make = "Toyota", Model = "Sienna", Year = 2023, Category = VehicleCategory.Van,
-            Transmission = "CVT", FuelType = "Hybrid", Seats = 8, Doors = 4, PricePerDay = 98,
+            Transmission = "Automatic", FuelType = "Hybrid", Seats = 8, Doors = 4, PricePerDay = 98,
             Mileage = 6000, LicensePlate = "VAN-002", VehicleStatus = VehicleStatus.Active,
             Features = ["Bluetooth", "Toyota Safety Sense", "Hybrid AWD", "Rear Entertainment", "Power Doors"],
             ImageUrl = Img("toyota", "sienna"), ImageUrlFront = Img("toyota", "sienna", angle: "front") },

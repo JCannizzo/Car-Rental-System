@@ -34,7 +34,7 @@ public class VehicleController : ControllerBase
     /// **Filtering options:**
     /// - **StartDate / EndDate** — exclude vehicles that have overlapping bookings.
     /// - **Category** — filter by vehicle category (Economy, Sedan, SUV, Truck, Luxury, Van, Electric).
-    /// - **TransmissionType** — filter by transmission (e.g. "Automatic", "Manual", "CVT").
+    /// - **TransmissionType** — filter by transmission (e.g. "Automatic", "Manual").
     /// - **FuelType** — filter by fuel type (e.g. "Petrol", "Diesel", "Hybrid", "Electric").
     /// - **MinSeats** — only return vehicles with at least this many seats.
     /// - **MaxPricePerDay** — only return vehicles at or below this daily rate.

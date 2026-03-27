@@ -17,7 +17,7 @@ public class VehicleQueryParams
     /// <summary>Filter by vehicle category (Economy, Sedan, SUV, Truck, Luxury, Van, Electric).</summary>
     public VehicleCategory? Category { get; set; }
 
-    /// <summary>Filter by transmission type (e.g. "Automatic", "Manual", "CVT").</summary>
+    /// <summary>Filter by transmission type (e.g. "Automatic", "Manual").</summary>
     public string? TransmissionType { get; set; }
 
     /// <summary>Filter by fuel type (e.g. "Petrol", "Diesel", "Hybrid", "Electric").</summary>

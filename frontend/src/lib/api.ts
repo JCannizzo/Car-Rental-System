@@ -22,9 +22,47 @@ export interface PaginatedResult<T> {
   totalCount: number;
 }
 
+export const VEHICLE_CATEGORIES = [
+  "Economy",
+  "Sedan",
+  "SUV",
+  "Truck",
+  "Luxury",
+  "Van",
+  "Electric",
+] as const;
+
+export type VehicleCategory = (typeof VEHICLE_CATEGORIES)[number];
+
+export const TRANSMISSION_TYPES = ["Automatic", "Manual"] as const;
+export type TransmissionType = (typeof TRANSMISSION_TYPES)[number];
+
+export const FUEL_TYPES = [
+  "Gasoline",
+  "Diesel",
+  "Hybrid",
+  "Electric",
+] as const;
+export type FuelType = (typeof FUEL_TYPES)[number];
+
+export const SEAT_OPTIONS = [
+  { label: "Any", value: undefined },
+  { label: "2+", value: 2 },
+  { label: "4+", value: 4 },
+  { label: "5+", value: 5 },
+  { label: "7+", value: 7 },
+] as const;
+
 export interface VehicleQueryParams {
   cursor?: string;
   pageSize?: number;
+  startDate?: string; // yyyy-MM-dd
+  endDate?: string; // yyyy-MM-dd
+  category?: VehicleCategory;
+  transmissionType?: TransmissionType;
+  fuelType?: FuelType;
+  minSeats?: number;
+  maxPricePerDay?: number;
 }
 
 export async function fetchVehicles(
@@ -34,6 +72,15 @@ export async function fetchVehicles(
 
   if (params.cursor) searchParams.set("Cursor", params.cursor);
   if (params.pageSize) searchParams.set("PageSize", String(params.pageSize));
+  if (params.startDate) searchParams.set("StartDate", params.startDate);
+  if (params.endDate) searchParams.set("EndDate", params.endDate);
+  if (params.category) searchParams.set("Category", params.category);
+  if (params.transmissionType)
+    searchParams.set("TransmissionType", params.transmissionType);
+  if (params.fuelType) searchParams.set("FuelType", params.fuelType);
+  if (params.minSeats) searchParams.set("MinSeats", String(params.minSeats));
+  if (params.maxPricePerDay)
+    searchParams.set("MaxPricePerDay", String(params.maxPricePerDay));
 
   const query = searchParams.toString();
   const url = `/api/Vehicle${query ? `?${query}` : ""}`;
