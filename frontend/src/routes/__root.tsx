@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { createRootRoute, Outlet } from "@tanstack/react-router";
+import { createRootRoute, Outlet, Link } from "@tanstack/react-router";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { Car } from "lucide-react";
@@ -16,10 +16,14 @@ export const Route = createRootRoute({
               <span className="font-semibold text-lg">Car Rental</span>
             </a>
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm">
-                Log in
-              </Button>
-              <Button size="sm">Sign up</Button>
+              <Link to="/auth">
+                <Button variant="ghost" size="sm">
+                  Log in
+                </Button>
+              </Link>
+              <Link to="/auth">
+                <Button size="sm">Sign up</Button>
+              </Link>
             </div>
           </div>
         </div>
