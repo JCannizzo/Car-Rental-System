@@ -20,7 +20,7 @@ public class VehicleDto
     /// <summary>Vehicle category — Economy, Sedan, SUV, Truck, Luxury, Van, or Electric.</summary>
     public string Category { get; set; } = string.Empty;
 
-    /// <summary>Transmission type (e.g. "Automatic", "Manual", "CVT").</summary>
+    /// <summary>Transmission type (e.g. "Automatic", "Manual").</summary>
     public string Transmission { get; set; } = string.Empty;
 
     /// <summary>Fuel type (e.g. "Petrol", "Diesel", "Hybrid", "Electric").</summary>

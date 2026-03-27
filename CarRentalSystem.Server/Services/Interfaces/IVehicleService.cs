@@ -7,7 +7,7 @@ public interface IVehicleService
 {
     // Public
     Task<VehicleDto?> GetVehicleAsync(Guid id);
-    Task<List<VehicleDto>> GetAvailableAsync(VehicleQueryParams query);
+    Task<PaginatedResult<VehicleDto>> GetAvailableAsync(VehicleQueryParams query);
     
     // Admin Dashboard
     // Methods below is implemented yet. Implement it when creating admin dashboard.
