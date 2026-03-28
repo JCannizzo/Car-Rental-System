@@ -17,9 +17,7 @@ export const Route = createRootRoute({
             </Link>
             <div className="flex items-center gap-3">
               <Link to="/auth">
-                <Button variant="ghost" size="sm">
-                  Log in
-                </Button>
+                <Button variant="ghost" size="sm">Log in</Button>
               </Link>
               <Link to="/auth">
                 <Button size="sm">Sign up</Button>
