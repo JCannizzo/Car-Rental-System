@@ -184,6 +184,55 @@ After startup, the terminal output will display URLs. Look for:
 
 <img width="624" height="624" alt="Picture2" src="https://github.com/user-attachments/assets/b3ac6f67-491a-44ed-a0ba-05a80f108bb9" />
 
+---
+
+## Stripe Setup (Payments)
+
+To enable local payment functionality, you need to install the Stripe CLI and configure your Stripe API key.
+
+---
+
+### 1. Install Stripe CLI
+
+Download and install the Stripe CLI for your system:
+
+https://docs.stripe.com/stripe-cli/install
+
+Verify installation:
+
+```
+stripe --version
+```
+
+---
+
+### 2. Get Your Stripe API Key
+
+1. Go to https://dashboard.stripe.com/
+2. Log in or create an account
+3. Navigate to Developers → API keys
+4. Copy your Secret key
+
+---
+
+### 3. Add Your Stripe API Key
+
+Run the following command inside the project folder:
+
+```
+dotnet user-secrets set "Parameters:stripe-api-key" "<your stripe key here>" --project CarRentalSystem.AppHost
+```
+
+---
+
+### Notes
+
+- Replace `<your stripe key here>` with your actual Stripe secret key
+- Do NOT share or commit your API key to GitHub
+- This is required for payment processing to work locally
+  
+---
+
 ## Project Structure
 
 ```
