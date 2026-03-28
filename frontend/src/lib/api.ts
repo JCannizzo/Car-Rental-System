@@ -65,6 +65,74 @@ export interface VehicleQueryParams {
   maxPricePerDay?: number;
 }
 
+export interface CreateBookingRequest {
+  vehicleId: string;
+  startDate: string; // yyyy-MM-dd
+  endDate: string; // yyyy-MM-dd
+}
+
+export interface BookingConfirmation {
+  bookingId: string;
+  confirmationCode: string;
+  vehicleId: string;
+  vehicleSummary: string;
+  startDate: string;
+  endDate: string;
+  totalPrice: number;
+  status: string;
+  paymentStatus: string;
+  checkoutUrl: string | null;
+}
+
+export interface BookingDetails {
+  id: string;
+  confirmationCode: string;
+  vehicleId: string;
+  vehicleSummary: string;
+  userId: string | null;
+  guestName: string | null;
+  guestEmail: string | null;
+  startDate: string;
+  endDate: string;
+  totalPrice: number;
+  status: string;
+  paymentStatus: string;
+  createdAt: string;
+}
+
+export async function fetchVehicle(id: string): Promise<Vehicle> {
+  const response = await fetch(`/api/Vehicle/${id}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch vehicle");
+  }
+  return response.json();
+}
+
+export async function createBooking(
+  data: CreateBookingRequest,
+): Promise<BookingConfirmation> {
+  const response = await fetch("/api/Bookings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(error || "Failed to create booking");
+  }
+  return response.json();
+}
+
+export async function fetchBookingByCode(
+  code: string,
+): Promise<BookingDetails> {
+  const response = await fetch(`/api/Bookings/confirmation/${code}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch booking");
+  }
+  return response.json();
+}
+
 export async function fetchVehicles(
   params: VehicleQueryParams = {},
 ): Promise<PaginatedResult<Vehicle>> {

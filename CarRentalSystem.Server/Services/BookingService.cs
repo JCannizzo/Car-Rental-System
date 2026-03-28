@@ -27,7 +27,7 @@ public class BookingService : IBookingService
         _logger = logger;
     }
 
-    public async Task<BookingConfirmationDto> CreateBookingAsync(CreateBookingDto dto, Guid? userId)
+    public async Task<BookingConfirmationDto> CreateBookingAsync(CreateBookingDto dto, Guid? userId, string frontendBaseUrl)
     {
         // Validate vehicle exists and is available for rental
         var vehicle = await _dbContext.Vehicles.FindAsync(dto.VehicleId);
@@ -37,24 +37,28 @@ public class BookingService : IBookingService
         if (vehicle.VehicleStatus != VehicleStatus.Active)
             throw new InvalidOperationException("Vehicle is not available for rental.");
 
+        // Normalize dates to UTC
+        var startDate = DateTime.SpecifyKind(dto.StartDate.Date, DateTimeKind.Utc);
+        var endDate = DateTime.SpecifyKind(dto.EndDate.Date, DateTimeKind.Utc);
+
         // Validate dates
-        if (dto.StartDate.Date >= dto.EndDate.Date)
+        if (startDate >= endDate)
             throw new InvalidOperationException("End date must be after start date.");
 
-        if (dto.StartDate.Date < DateTime.UtcNow.Date)
+        if (startDate < DateTime.UtcNow.Date)
             throw new InvalidOperationException("Start date cannot be in the past.");
 
         // Check for overlapping bookings on this vehicle
         var hasOverlap = await _dbContext.Bookings.AnyAsync(b =>
             b.VehicleId == dto.VehicleId &&
             b.Status != BookingStatus.Cancelled &&
-            b.StartDate.Date < dto.EndDate.Date &&
-            b.EndDate.Date > dto.StartDate.Date);
+            b.StartDate < endDate &&
+            b.EndDate > startDate);
 
         if (hasOverlap)
             throw new InvalidOperationException("Vehicle is not available for the selected dates.");
 
-        var rentalDays = (dto.EndDate.Date - dto.StartDate.Date).Days;
+        var rentalDays = (endDate - startDate).Days;
         var totalPrice = rentalDays * vehicle.PricePerDay;
 
         var confirmationCode = await GenerateUniqueConfirmationCodeAsync();
@@ -68,8 +72,8 @@ public class BookingService : IBookingService
             GuestName = userId.HasValue ? null : dto.GuestName,
             GuestEmail = userId.HasValue ? null : dto.GuestEmail,
             GuestPhone = userId.HasValue ? null : dto.GuestPhone,
-            StartDate = dto.StartDate.Date,
-            EndDate = dto.EndDate.Date,
+            StartDate = startDate,
+            EndDate = endDate,
             TotalPrice = totalPrice,
             Status = BookingStatus.Pending,
             PaymentStatus = PaymentStatus.Unpaid,
@@ -81,9 +85,9 @@ public class BookingService : IBookingService
 
         _logger.LogInformation(
             "Booking {ConfirmationCode} created for vehicle {VehicleId}, {StartDate} - {EndDate}, total: {TotalPrice}",
-            confirmationCode, dto.VehicleId, dto.StartDate.Date, dto.EndDate.Date, totalPrice);
+            confirmationCode, dto.VehicleId, startDate, endDate, totalPrice);
 
-        var checkoutUrl = await _paymentService.CreateCheckoutSessionAsync(booking);
+        var checkoutUrl = await _paymentService.CreateCheckoutSessionAsync(booking, frontendBaseUrl);
 
         return new BookingConfirmationDto
         {

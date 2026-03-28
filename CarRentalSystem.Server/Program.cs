@@ -30,7 +30,7 @@ builder.Services.AddOpenApi(options =>
 });
 builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
-builder.Services.AddScoped<IPaymentService, StubPaymentService>();
+builder.Services.AddScoped<IPaymentService, StripePaymentService>();
 
 var app = builder.Build();
 

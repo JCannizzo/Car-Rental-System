@@ -14,7 +14,7 @@ public class StubPaymentService : IPaymentService
         _logger = logger;
     }
 
-    public Task<string?> CreateCheckoutSessionAsync(Booking booking)
+    public Task<string?> CreateCheckoutSessionAsync(Booking booking, string frontendBaseUrl)
     {
         _logger.LogWarning(
             "Payment service is not configured. Booking {ConfirmationCode} created without payment.",

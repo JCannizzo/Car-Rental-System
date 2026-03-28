@@ -1,9 +1,23 @@
 import type { Vehicle } from "@/lib/api";
+import { Link } from "@tanstack/react-router";
 import { Fuel, Settings2, Users } from "lucide-react";
 
-function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
+function VehicleCard({
+  vehicle,
+  startDate,
+  endDate,
+}: {
+  vehicle: Vehicle;
+  startDate?: string;
+  endDate?: string;
+}) {
   return (
-    <div className="flex items-center gap-4 p-4 bg-card hover:bg-muted/50 transition-colors">
+    <Link
+      to="/vehicles/$vehicleId"
+      params={{ vehicleId: vehicle.id }}
+      search={{ startDate, endDate }}
+      className="flex items-center gap-4 p-4 bg-card hover:bg-muted/50 transition-colors"
+    >
       <img
         src={vehicle.imageUrl}
         alt={`${vehicle.make} ${vehicle.model}`}
@@ -39,7 +53,7 @@ function VehicleCard({ vehicle }: { vehicle: Vehicle }) {
         <span className="font-semibold">${vehicle.pricePerDay}</span>
         <span className="text-sm text-muted-foreground">/day</span>
       </div>
-    </div>
+    </Link>
   );
 }
 

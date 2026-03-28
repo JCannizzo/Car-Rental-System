@@ -43,8 +43,8 @@ const MAX_PRICE = 300;
 
 function Index() {
   const [date, setDate] = useState<DateRange | undefined>({
-    from: new Date(),
-    to: addDays(new Date(), 7),
+    from: addDays(new Date(), 1),
+    to: addDays(new Date(), 8),
   });
 
   const [category, setCategory] = useState<VehicleCategory | undefined>();
@@ -179,6 +179,7 @@ function Index() {
                     selected={date}
                     onSelect={setDate}
                     numberOfMonths={2}
+                    disabled={{ before: addDays(new Date(), 1) }}
                   />
                 </PopoverContent>
               </Popover>
@@ -516,7 +517,12 @@ function Index() {
             ) : (
               <div className="flex flex-col divide-y divide-border border border-border rounded-lg overflow-hidden">
                 {vehicles.map((car) => (
-                  <VehicleCard key={car.id} vehicle={car} />
+                  <VehicleCard
+                    key={car.id}
+                    vehicle={car}
+                    startDate={filters.startDate}
+                    endDate={filters.endDate}
+                  />
                 ))}
               </div>
             )}
