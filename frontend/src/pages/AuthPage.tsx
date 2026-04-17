@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 export default function AuthPage() {
   const search = useSearch({ from: "/auth" });
-  const tabFromUrl = (search as any).tab === "register" ? "register" : "login";
+  const tabFromUrl = (search as Record<string, string>).tab === "register" ? "register" : "login";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
   useEffect(() => {
