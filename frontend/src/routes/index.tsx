@@ -14,7 +14,6 @@ function HomePage() {
   return (
     <main className="min-h-screen flex flex-col">
 
-      {/* Mobile */}
       <section className="flex flex-col items-center justify-center text-center px-4 py-20 gap-6">
         <h1 className="text-4xl sm:text-5xl font-bold">
           Find the perfect car for your journey

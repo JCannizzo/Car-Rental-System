@@ -19,10 +19,10 @@ export const Route = createRootRoute({
               <Link to="/browse">
                 <Button variant="ghost" size="sm">Browse</Button>
               </Link>    
-              <Link to="/auth">
+              <Link to="/auth" search={{ tab: "login" }}>
                 <Button variant="ghost" size="sm">Log in</Button>
-              </Link>           
-              <Link to="/auth">
+              </Link>
+              <Link to="/auth" search={{ tab: "register" }}>
                 <Button size="sm">Sign up</Button>
               </Link>
             </div>
