@@ -5,9 +5,17 @@ var cache = builder.AddRedis("cache");
 var postgres = builder.AddPostgres("postgres")
     .AddDatabase("car-rental-system-db");
 
+var keycloakThemeDir = Path.GetFullPath(
+    Path.Combine(builder.AppHostDirectory, "..", "keycloak-theme", "dist_keycloak"));
+
 var keycloak = builder.AddKeycloak("keycloak", 8080)
     .WithRealmImport("./Realms")
     .WithDataVolume();
+
+if (Directory.Exists(keycloakThemeDir))
+{
+    keycloak.WithBindMount(keycloakThemeDir, "/opt/keycloak/providers", isReadOnly: true);
+}
 
 var migrations = builder.AddProject<Projects.CarRentalSystem_MigrationService>("migrations")
     .WithReference(postgres)

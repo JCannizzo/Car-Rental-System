@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   clearPendingBookingClaimCode,
   consumeBookingClaimError,
+  getPendingBookingClaimCode,
   mapClaimErrorMessage,
   setPendingBookingClaimCode,
 } from "@/lib/booking-claim";
@@ -47,6 +48,26 @@ function BookingConfirmation() {
     setClaimError(consumeBookingClaimError(code));
   }, [code]);
 
+  const isOwnedByCurrentUser = Boolean(
+    auth.user?.id && booking?.userId === auth.user.id,
+  );
+
+  useEffect(() => {
+    if (!auth.isReady || !auth.isAuthenticated) return;
+    if (!booking) return;
+    if (getPendingBookingClaimCode() !== booking.confirmationCode) return;
+    if (isOwnedByCurrentUser) {
+      clearPendingBookingClaimCode();
+      void navigate({ to: "/bookings" });
+    }
+  }, [
+    auth.isReady,
+    auth.isAuthenticated,
+    booking,
+    isOwnedByCurrentUser,
+    navigate,
+  ]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -71,9 +92,6 @@ function BookingConfirmation() {
 
   const isPaid = booking.paymentStatus === "Paid";
   const isClaimed = Boolean(booking.userId);
-  const isOwnedByCurrentUser = Boolean(
-    auth.user?.id && booking.userId === auth.user.id,
-  );
 
   const details = [
     { label: "Vehicle", value: booking.vehicleSummary },

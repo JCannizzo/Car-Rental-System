@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { fetchMyBookings } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { Loader2 } from "lucide-react";
 import { useEffect } from "react";
@@ -21,21 +21,14 @@ export const Route = createFileRoute("/bookings")({
 
 function MyBookingsPage() {
   const auth = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!auth.isReady || auth.isAuthenticated) {
       return;
     }
 
-    void navigate({
-      search: {
-        mode: "login",
-        redirect: "/bookings",
-      },
-      to: "/auth",
-    });
-  }, [auth.isAuthenticated, auth.isReady, navigate]);
+    void auth.login(`${window.location.origin}/bookings`);
+  }, [auth]);
 
   const { data, isError, isLoading } = useQuery({
     enabled: auth.isReady && auth.isAuthenticated,
