@@ -1,5 +1,7 @@
 using System.Security.Claims;
 using CarRentalSystem.Server.DTOs;
+using CarRentalSystem.Server.Extensions;
+using CarRentalSystem.Server.Services;
 using CarRentalSystem.Server.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -56,12 +58,7 @@ public class BookingsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateBooking([FromBody] CreateBookingDto dto)
     {
-        Guid? userId = null;
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!string.IsNullOrEmpty(sub) && Guid.TryParse(sub, out var parsedUserId))
-        {
-            userId = parsedUserId;
-        }
+        var userId = User.GetUserId();
 
         var frontendUrl = _config["FrontendUrl"] ?? $"{Request.Scheme}://{Request.Host}";
 
@@ -76,6 +73,45 @@ public class BookingsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Claim a paid guest booking and attach it to the signed-in customer account.
+    /// </summary>
+    /// <param name="dto">The booking confirmation code to claim.</param>
+    /// <response code="200">The booking was successfully claimed or was already linked to the current account.</response>
+    /// <response code="400">The booking exists but is not eligible to be claimed.</response>
+    /// <response code="401">The request is not authenticated.</response>
+    /// <response code="403">The signed-in account email does not match the checkout email on the booking.</response>
+    /// <response code="404">No booking exists with the specified confirmation code.</response>
+    /// <response code="409">The booking is already linked to another account.</response>
+    [HttpPost("claim")]
+    [Authorize(Policy = "CustomerOnly")]
+    [ProducesResponseType<ClaimBookingResultDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ClaimBooking([FromBody] ClaimBookingDto dto)
+    {
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        var userEmail = User.GetUserEmail();
+
+        try
+        {
+            var result = await _bookingService.ClaimGuestBookingAsync(dto.ConfirmationCode, userId.Value, userEmail ?? string.Empty);
+            return Ok(result);
+        }
+        catch (BookingClaimException ex)
+        {
+            return StatusCode(ex.StatusCode, new { error = ex.Message });
         }
     }
 
@@ -142,13 +178,13 @@ public class BookingsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetMyBookings()
     {
-        var sub = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(sub) || !Guid.TryParse(sub, out var userId))
+        var userId = User.GetUserId();
+        if (!userId.HasValue)
         {
             return Unauthorized();
         }
 
-        var bookings = await _bookingService.GetBookingsByUserAsync(userId);
+        var bookings = await _bookingService.GetBookingsByUserAsync(userId.Value);
         return Ok(bookings);
     }
 

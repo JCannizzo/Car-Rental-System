@@ -1,70 +1,130 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { getPendingBookingClaimCode } from "@/lib/booking-claim";
+import { useAuth } from "@/lib/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getRouteApi } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+
+const authRoute = getRouteApi("/auth");
 
 export default function AuthPage() {
+  const auth = useAuth();
+  const navigate = authRoute.useNavigate();
+  const search = authRoute.useSearch();
+  const [activeTab, setActiveTab] = useState(search.mode ?? "login");
+  const pendingClaimCode = getPendingBookingClaimCode();
+
+  useEffect(() => {
+    setActiveTab(search.mode ?? "login");
+  }, [search.mode]);
+
+  useEffect(() => {
+    if (!auth.isReady || !auth.isAuthenticated || pendingClaimCode) {
+      return;
+    }
+
+    window.location.replace(search.redirect ?? "/bookings");
+  }, [auth.isAuthenticated, auth.isReady, pendingClaimCode, search.redirect]);
+
+  const handleTabChange = (value: string) => {
+    const nextTab = value === "register" ? "register" : "login";
+    setActiveTab(nextTab);
+    void navigate({
+      replace: true,
+      search: (previous) => ({
+        ...previous,
+        mode: nextTab,
+      }),
+    });
+  };
+
+  const handleLogin = () => {
+    void auth.login(window.location.href);
+  };
+
+  const handleRegister = () => {
+    void auth.register(window.location.href);
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
-      <Tabs defaultValue="login" className="w-full max-w-md">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full max-w-md">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>
           <TabsTrigger value="register">Register</TabsTrigger>
         </TabsList>
 
-        {/* SCRUM-71: Login Page */}
         <TabsContent value="login">
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-brand-primary">Welcome Back</CardTitle>
-              <CardDescription>Enter your credentials to access your rental account.</CardDescription>
+              <CardDescription>
+                Continue to the secure Keycloak login flow to access your rental account.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="m@example.com" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required />
-              </div>
+              {pendingClaimCode ? (
+                <div className="rounded-lg border border-border bg-muted/50 p-4">
+                  <p className="font-medium">Booking ready to claim</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Sign in with the same email used during checkout to attach booking{" "}
+                    <span className="font-medium text-foreground">
+                      {pendingClaimCode}
+                    </span>{" "}
+                    to your account.
+                  </p>
+                </div>
+              ) : null}
+              {auth.isReady && auth.isAuthenticated ? (
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-4 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Redirecting to your account...
+                </div>
+              ) : null}
+              {auth.error ? (
+                <p className="text-sm text-destructive">{auth.error}</p>
+              ) : null}
             </CardContent>
             <CardFooter>
-              <Button className="w-full bg-brand-primary">Login</Button>
+              <Button className="w-full bg-brand-primary" onClick={handleLogin} disabled={!auth.isReady}>
+                Continue To Login
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>
 
-        {/* SCRUM-72: Register Page */}
         <TabsContent value="register">
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl font-bold text-brand-primary">Create Account</CardTitle>
-              <CardDescription>Join our fleet and start your journey today.</CardDescription>
+              <CardDescription>
+                Create your account in Keycloak, then we&apos;ll bring you back here automatically.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="first-name">First name</Label>
-                  <Input id="first-name" placeholder="John" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last-name">Last name</Label>
-                  <Input id="last-name" placeholder="Doe" required />
-                </div>
+              <div className="rounded-lg border border-border bg-muted/50 p-4">
+                <p className="font-medium">Use the checkout email address</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  If you&apos;re claiming a paid guest booking, register with the same email you used during Stripe checkout.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="reg-email">Email</Label>
-                <Input id="reg-email" type="email" placeholder="m@example.com" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reg-password">Password</Label>
-                <Input id="reg-password" type="password" required />
-              </div>
+              {auth.error ? (
+                <p className="text-sm text-destructive">{auth.error}</p>
+              ) : null}
             </CardContent>
             <CardFooter>
-              <Button className="w-full bg-brand-primary">Create Account</Button>
+              <Button className="w-full bg-brand-primary" onClick={handleRegister} disabled={!auth.isReady}>
+                Create Account
+              </Button>
             </CardFooter>
           </Card>
         </TabsContent>

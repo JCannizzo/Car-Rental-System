@@ -42,7 +42,13 @@ server.WithReference(stripe)
     .WithEnvironment("STRIPE_API_KEY", stripeApiKey);
 
 var webfrontend = builder.AddViteApp("webfrontend", "../frontend")
-    .WithExternalHttpEndpoints()
+    .WithEndpoint("http", endpoint =>
+    {
+        endpoint.Port = 5173;
+        endpoint.TargetPort = 5173;
+        endpoint.IsExternal = true;
+        endpoint.IsProxied = false;
+    })
     .WithReference(keycloak)
     .WithReference(server)
     .WaitFor(server);

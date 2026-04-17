@@ -6,6 +6,13 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __KEYCLOAK_URL__: JSON.stringify(
+      process.env.KEYCLOAK_HTTPS
+        || process.env.KEYCLOAK_HTTP
+        || "http://localhost:8080",
+    ),
+  },
   plugins: [
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),

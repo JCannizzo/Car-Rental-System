@@ -1,3 +1,5 @@
+import { getAccessToken } from "@/lib/keycloak";
+
 export interface Vehicle {
   id: string;
   make: string;
@@ -100,10 +102,68 @@ export interface BookingDetails {
   createdAt: string;
 }
 
+export interface ClaimBookingResponse {
+  bookingId: string;
+  confirmationCode: string;
+  claimed: boolean;
+  redirectTo: string;
+}
+
+export class ApiError extends Error {
+  public status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function apiFetch(
+  input: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const token = await getAccessToken();
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (init.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return fetch(input, {
+    ...init,
+    headers,
+  });
+}
+
+async function readApiError(
+  response: Response,
+  fallbackMessage: string,
+): Promise<ApiError> {
+  const payload = await response.text();
+
+  if (!payload) {
+    return new ApiError(fallbackMessage, response.status);
+  }
+
+  try {
+    const parsed = JSON.parse(payload) as { error?: string; title?: string };
+    return new ApiError(
+      parsed.error || parsed.title || fallbackMessage,
+      response.status,
+    );
+  } catch {
+    return new ApiError(payload, response.status);
+  }
+}
+
 export async function fetchVehicle(id: string): Promise<Vehicle> {
-  const response = await fetch(`/api/Vehicle/${id}`);
+  const response = await apiFetch(`/api/Vehicle/${id}`);
   if (!response.ok) {
-    throw new Error("Failed to fetch vehicle");
+    throw await readApiError(response, "Failed to fetch vehicle");
   }
   return response.json();
 }
@@ -111,14 +171,12 @@ export async function fetchVehicle(id: string): Promise<Vehicle> {
 export async function createBooking(
   data: CreateBookingRequest,
 ): Promise<BookingConfirmation> {
-  const response = await fetch("/api/Bookings", {
+  const response = await apiFetch("/api/Bookings", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || "Failed to create booking");
+    throw await readApiError(response, "Failed to create booking");
   }
   return response.json();
 }
@@ -126,10 +184,35 @@ export async function createBooking(
 export async function fetchBookingByCode(
   code: string,
 ): Promise<BookingDetails> {
-  const response = await fetch(`/api/Bookings/confirmation/${code}`);
+  const response = await apiFetch(`/api/Bookings/confirmation/${code}`);
   if (!response.ok) {
-    throw new Error("Failed to fetch booking");
+    throw await readApiError(response, "Failed to fetch booking");
   }
+  return response.json();
+}
+
+export async function claimBooking(
+  confirmationCode: string,
+): Promise<ClaimBookingResponse> {
+  const response = await apiFetch("/api/Bookings/claim", {
+    method: "POST",
+    body: JSON.stringify({ confirmationCode }),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to claim booking");
+  }
+
+  return response.json();
+}
+
+export async function fetchMyBookings(): Promise<BookingDetails[]> {
+  const response = await apiFetch("/api/Bookings/my");
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch your bookings");
+  }
+
   return response.json();
 }
 
@@ -153,9 +236,9 @@ export async function fetchVehicles(
   const query = searchParams.toString();
   const url = `/api/Vehicle${query ? `?${query}` : ""}`;
 
-  const response = await fetch(url);
+  const response = await apiFetch(url);
   if (!response.ok) {
-    throw new Error("Failed to fetch vehicles");
+    throw await readApiError(response, "Failed to fetch vehicles");
   }
   return response.json();
 }

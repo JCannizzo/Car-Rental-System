@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "CarRentalSystem.AppHost/CarRentalSystem.AppHost.csproj"
+  }
+}
