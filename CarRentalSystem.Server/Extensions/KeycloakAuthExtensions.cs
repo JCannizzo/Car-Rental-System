@@ -19,10 +19,11 @@ public static class KeycloakAuthExtensions
                 });
 
         builder.Services.AddAuthorizationBuilder()
-            .AddPolicy("CustomerOnly", policy => policy.RequireClaim("customer"))
-            .AddPolicy("EmployeeOnly", policy => policy.RequireClaim("employee"))
-            .AddPolicy("AdminOnly", policy => policy.RequireClaim("admin"))
-            .AddPolicy("StaffOrAdmin", policy => policy.RequireClaim("employee", "admin"));
+            .AddPolicy("CustomerOnly", policy => policy.RequireAssertion(context => context.User.HasRealmRole("customer")))
+            .AddPolicy("EmployeeOnly", policy => policy.RequireAssertion(context => context.User.HasRealmRole("employee")))
+            .AddPolicy("AdminOnly", policy => policy.RequireAssertion(context => context.User.HasRealmRole("admin")))
+            .AddPolicy("StaffOrAdmin", policy => policy.RequireAssertion(context =>
+                context.User.HasRealmRole("employee") || context.User.HasRealmRole("admin")));
         
         return builder;
     }

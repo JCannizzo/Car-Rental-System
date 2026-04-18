@@ -1,5 +1,7 @@
 using CarRentalSystem.Data.Contexts;
+using CarRentalSystem.Server.Configuration;
 using CarRentalSystem.Server.Extensions;
+using CarRentalSystem.Server.Middleware;
 using CarRentalSystem.Server.Services;
 using CarRentalSystem.Server.Services.Interfaces;
 using Scalar.AspNetCore;
@@ -32,6 +34,15 @@ builder.Services.AddScoped<IVehicleService, VehicleService>();
 builder.Services.AddScoped<IBookingService, BookingService>();
 builder.Services.AddScoped<IPaymentService, StripePaymentService>();
 
+builder.Services.AddMemoryCache();
+builder.Services.Configure<KeycloakAdminOptions>(
+    builder.Configuration.GetSection(KeycloakAdminOptions.SectionName));
+builder.Services.AddHttpClient<IKeycloakAdminClient, KeycloakAdminClient>(client =>
+{
+    client.BaseAddress = new Uri("http://keycloak");
+});
+builder.Services.AddScoped<IBookingLinkingService, BookingLinkingService>();
+
 var app = builder.Build();
 
 app.UseExceptionHandler();
@@ -44,6 +55,7 @@ if (app.Environment.IsDevelopment())
 app.UseFileServer();
 app.UseOutputCache();
 app.UseAuthentication();
+app.UseMiddleware<BookingLinkingMiddleware>();
 app.UseAuthorization();
 
 app.MapDefaultEndpoints();

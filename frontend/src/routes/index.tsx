@@ -22,11 +22,6 @@ function HomePage() {
           <Link to="/browse">
             <Button size="lg">Browse Vehicles</Button>
           </Link>
-          <Link to="/auth">
-              <Button variant="outline" size="lg">
-                Sign Up
-              </Button>
-            </Link>
         </div>
 
       </section>

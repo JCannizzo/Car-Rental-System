@@ -3,6 +3,7 @@ using CarRentalSystem.Data.Contexts;
 using CarRentalSystem.Data.Models;
 using CarRentalSystem.Server.DTOs;
 using CarRentalSystem.Server.Services.Interfaces;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace CarRentalSystem.Server.Services;
@@ -13,7 +14,7 @@ public class BookingService : IBookingService
     private readonly IPaymentService _paymentService;
     private readonly ILogger<BookingService> _logger;
 
-    private const string ConfirmationCodeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    private const string ConfirmationCodeChars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // No 0/O/1/I to avoid ambiguity
     private const int ConfirmationCodeLength = 6;
     private const string ConfirmationCodePrefix = "CRS";
 
@@ -107,11 +108,104 @@ public class BookingService : IBookingService
 
     public async Task<BookingDto?> GetBookingByConfirmationCodeAsync(string confirmationCode)
     {
+        var normalizedCode = NormalizeConfirmationCode(confirmationCode);
+        if (string.IsNullOrEmpty(normalizedCode))
+        {
+            return null;
+        }
+
         var booking = await _dbContext.Bookings
             .Include(b => b.Vehicle)
-            .FirstOrDefaultAsync(b => b.ConfirmationCode == confirmationCode);
+            .FirstOrDefaultAsync(b => b.ConfirmationCode == normalizedCode);
 
         return booking is null ? null : MapToDto(booking);
+    }
+
+    public async Task<ClaimBookingResultDto> ClaimGuestBookingAsync(string confirmationCode, Guid userId, string userEmail)
+    {
+        if (string.IsNullOrWhiteSpace(userEmail))
+        {
+            throw new BookingClaimException(StatusCodes.Status400BadRequest, "Your account email must match the email used during checkout.");
+        }
+
+        var normalizedCode = NormalizeRequiredConfirmationCode(confirmationCode);
+        var normalizedEmail = NormalizeEmail(userEmail);
+
+        _logger.LogInformation(
+            "Booking claim attempted for code {ConfirmationCode} by user {UserId}.",
+            normalizedCode,
+            userId);
+
+        var booking = await _dbContext.Bookings
+            .FirstOrDefaultAsync(b => b.ConfirmationCode == normalizedCode);
+
+        if (booking is null)
+        {
+            throw new BookingClaimException(StatusCodes.Status404NotFound, "Booking not found.");
+        }
+
+        if (booking.PaymentStatus != PaymentStatus.Paid)
+        {
+            throw new BookingClaimException(StatusCodes.Status400BadRequest, "Only paid bookings can be claimed.");
+        }
+
+        if (booking.Status == BookingStatus.Cancelled)
+        {
+            throw new BookingClaimException(StatusCodes.Status400BadRequest, "Cancelled bookings cannot be claimed.");
+        }
+
+        if (string.IsNullOrWhiteSpace(booking.GuestEmail))
+        {
+            throw new BookingClaimException(StatusCodes.Status400BadRequest, "This booking cannot be claimed because it has no guest email on file.");
+        }
+
+        var normalizedGuestEmail = NormalizeEmail(booking.GuestEmail);
+        if (!string.Equals(normalizedGuestEmail, normalizedEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "Booking claim denied for code {ConfirmationCode} because account email {UserEmail} does not match checkout email.",
+                normalizedCode,
+                normalizedEmail);
+
+            throw new BookingClaimException(StatusCodes.Status403Forbidden, "Your account email must match the email used during checkout.");
+        }
+
+        if (booking.UserId.HasValue)
+        {
+            if (booking.UserId.Value == userId)
+            {
+                return new ClaimBookingResultDto
+                {
+                    BookingId = booking.Id,
+                    ConfirmationCode = booking.ConfirmationCode,
+                    Claimed = true,
+                    RedirectTo = "/bookings",
+                };
+            }
+
+            _logger.LogWarning(
+                "Booking claim denied for code {ConfirmationCode} because it is already linked to user {ExistingUserId}.",
+                normalizedCode,
+                booking.UserId.Value);
+
+            throw new BookingClaimException(StatusCodes.Status409Conflict, "This booking is already linked to another account.");
+        }
+
+        booking.UserId = userId;
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Booking {ConfirmationCode} successfully claimed by user {UserId}.",
+            normalizedCode,
+            userId);
+
+        return new ClaimBookingResultDto
+        {
+            BookingId = booking.Id,
+            ConfirmationCode = booking.ConfirmationCode,
+            Claimed = true,
+            RedirectTo = "/bookings",
+        };
     }
 
     public async Task<BookingDto?> GetBookingByIdAsync(Guid id)
@@ -135,8 +229,14 @@ public class BookingService : IBookingService
 
     public async Task<bool> CancelBookingAsync(string confirmationCode)
     {
+        var normalizedCode = NormalizeConfirmationCode(confirmationCode);
+        if (string.IsNullOrEmpty(normalizedCode))
+        {
+            return false;
+        }
+
         var booking = await _dbContext.Bookings
-            .FirstOrDefaultAsync(b => b.ConfirmationCode == confirmationCode);
+            .FirstOrDefaultAsync(b => b.ConfirmationCode == normalizedCode);
 
         if (booking is null)
             return false;
@@ -202,5 +302,28 @@ public class BookingService : IBookingService
             PaymentStatus = booking.PaymentStatus.ToString(),
             CreatedAt = booking.CreatedAt,
         };
+    }
+
+    private static string NormalizeRequiredConfirmationCode(string confirmationCode)
+    {
+        var normalized = NormalizeConfirmationCode(confirmationCode);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            throw new BookingClaimException(StatusCodes.Status400BadRequest, "Confirmation code is required.");
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeConfirmationCode(string? confirmationCode)
+    {
+        return string.IsNullOrWhiteSpace(confirmationCode)
+            ? null
+            : confirmationCode.Trim().ToUpperInvariant();
+    }
+
+    private static string NormalizeEmail(string email)
+    {
+        return email.Trim();
     }
 }
