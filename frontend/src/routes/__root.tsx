@@ -17,10 +17,18 @@ function RootLayout() {
       <header className="sticky top-0 z-50 bg-background border-b border-border">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between gap-4">
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/" className="flex flex-between items-center gap-2">
               <Car className="h-6 w-6" />
               <span className="font-semibold text-lg">Car Rental</span>
             </Link>
+            <div className="flex gap-3">
+              <Link to="/">
+                <Button variant="ghost" size="sm">Home</Button>
+              </Link>
+              <Link to="/browse">
+                <Button variant="ghost" size="sm">Browse</Button>
+              </Link>
+            </div>
             <div className="flex items-center gap-3">
               {auth.isReady && auth.isAuthenticated ? (
                 <>
@@ -56,15 +64,6 @@ function RootLayout() {
                   </Button>
                 </>
               )}
-              <Link to="/browse">
-                <Button variant="ghost" size="sm">Browse</Button>
-              </Link>    
-              <Link to="/auth" search={{ tab: "login" }}>
-                <Button variant="ghost" size="sm">Log in</Button>
-              </Link>
-              <Link to="/auth" search={{ tab: "register" }}>
-                <Button size="sm">Sign up</Button>
-              </Link>
             </div>
           </div>
           {auth.error ? (
