@@ -174,4 +174,32 @@ public class BookingsController : ControllerBase
         var result = await _bookingService.CancelBookingAsync(code);
         return result ? NoContent() : NotFound();
     }
-}
+[HttpGet("{id}")]
+public async Task<ActionResult<BookingResponse>> GetBookingById(int id)
+{
+    // 1. Look in the database for the booking ID the user typed in
+    // .Include(b => b.Vehicle) makes sure we also grab the car info
+    var booking = await _context.Bookings
+        .Include(b => b.Vehicle)
+        .FirstOrDefaultAsync(b => b.Id == id);
+
+    // 2. If we can't find it, tell the user "Not Found"
+    if (booking == null)
+    {
+        return NotFound(new { message = $"Booking with ID {id} not found." });
+    }
+
+    // 3. If we found it, package it up nicely into our Blueprint from Step 1
+    var response = new BookingResponse
+    {
+        BookingId = booking.Id,
+        VehicleName = $"{booking.Vehicle.Make} {booking.Vehicle.Model}",
+        StartDate = booking.StartDate,
+        EndDate = booking.EndDate,
+        TotalPrice = booking.TotalPrice,
+        Status = booking.Status.ToString()
+    };
+
+    // 4. Send it back to the frontend
+    return Ok(response);
+}}
