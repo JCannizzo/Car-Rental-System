@@ -15,7 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { CheckCircle2, Clock, Loader2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/booking/confirmation/$code")({
   component: BookingConfirmation,
@@ -27,6 +27,7 @@ function BookingConfirmation() {
   const navigate = Route.useNavigate();
   const [claimError, setClaimError] = useState<string | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
+  const autoClaimAttemptedRef = useRef(false);
 
   const {
     data: booking,
@@ -59,13 +60,35 @@ function BookingConfirmation() {
     if (isOwnedByCurrentUser) {
       clearPendingBookingClaimCode();
       void navigate({ to: "/bookings" });
+      return;
     }
+    if (booking.paymentStatus !== "Paid") return;
+    if (booking.userId) return;
+    if (autoClaimAttemptedRef.current || isClaiming) return;
+
+    autoClaimAttemptedRef.current = true;
+    setIsClaiming(true);
+    setClaimError(null);
+    claimBooking(booking.confirmationCode)
+      .then(() => {
+        clearPendingBookingClaimCode();
+        void navigate({ to: "/bookings" });
+      })
+      .catch((error: unknown) => {
+        setClaimError(mapClaimErrorMessage(error));
+      })
+      .finally(() => {
+        setIsClaiming(false);
+        void refetch();
+      });
   }, [
     auth.isReady,
     auth.isAuthenticated,
     booking,
+    isClaiming,
     isOwnedByCurrentUser,
     navigate,
+    refetch,
   ]);
 
   if (isLoading) {
@@ -127,7 +150,9 @@ function BookingConfirmation() {
   const handleAuthRedirect = (mode: "login" | "register") => {
     setPendingBookingClaimCode(booking.confirmationCode);
     if (mode === "register") {
-      void auth.register(window.location.href);
+      void auth.register(window.location.href, {
+        bookingConfirmationCode: booking.confirmationCode,
+      });
       return;
     }
 

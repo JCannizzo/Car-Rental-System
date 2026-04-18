@@ -7,7 +7,10 @@ export interface AuthContextValue {
   isReady: boolean;
   login: (redirectUri?: string) => Promise<void>;
   logout: (redirectUri?: string) => Promise<void>;
-  register: (redirectUri?: string) => Promise<void>;
+  register: (
+    redirectUri?: string,
+    options?: { bookingConfirmationCode?: string },
+  ) => Promise<void>;
   user: AuthUser | null;
 }
 

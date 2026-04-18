@@ -44,6 +44,28 @@ export default function UserProfileFormFields(
     onIsFormSubmittableValueChange(isFormSubmittable);
   }, [isFormSubmittable, onIsFormSubmittableValueChange]);
 
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return;
+    const params = new URLSearchParams(hash);
+    let handled = false;
+    for (const attribute of formFieldStates.map((s) => s.attribute)) {
+      const raw = params.get(attribute.name);
+      if (raw === null) continue;
+      dispatchFormAction({
+        action: "update",
+        name: attribute.name,
+        valueOrValues: raw,
+      });
+      handled = true;
+    }
+    if (handled) {
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+    // Only run once on mount: seed initial values from the URL fragment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const groupNameRef = { current: "" };
 
   return (

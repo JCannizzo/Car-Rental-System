@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { fetchMyBookings } from "@/lib/api";
+import { ApiError, fetchMyBookings } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -30,10 +30,11 @@ function MyBookingsPage() {
     void auth.login(`${window.location.origin}/bookings`);
   }, [auth]);
 
-  const { data, isError, isLoading } = useQuery({
+  const { data, error, isError, isLoading } = useQuery({
     enabled: auth.isReady && auth.isAuthenticated,
     queryFn: fetchMyBookings,
     queryKey: ["my-bookings"],
+    retry: false,
   });
 
   if (!auth.isReady || (auth.isAuthenticated && isLoading)) {
@@ -53,13 +54,23 @@ function MyBookingsPage() {
   }
 
   if (isError) {
+    const status = error instanceof ApiError ? error.status : null;
+    const message =
+      status === 403
+        ? "Your account is missing the customer role. Ask an admin to assign it, or re-register after the realm was re-imported."
+        : status === 401
+          ? "Your session expired. Try logging out and back in."
+          : error instanceof Error
+            ? error.message
+            : "Something went wrong.";
     return (
       <div className="mx-auto max-w-4xl px-4 py-12">
         <Card>
           <CardHeader>
             <CardTitle>Unable To Load Your Bookings</CardTitle>
             <CardDescription>
-              Try refreshing the page or signing in again.
+              {status !== null ? `(${status}) ` : ""}
+              {message}
             </CardDescription>
           </CardHeader>
           <CardContent>

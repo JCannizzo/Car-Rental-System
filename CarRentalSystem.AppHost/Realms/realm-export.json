@@ -61,7 +61,8 @@
         "composites": {
           "realm": [
             "offline_access",
-            "uma_authorization"
+            "uma_authorization",
+            "customer"
           ],
           "client": {
             "account": [
@@ -837,6 +838,20 @@
             "jsonType.label": "String",
             "multivalued": "false",
             "aggregate.attrs": "false"
+          }
+        },
+        {
+          "name": "carrental-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "carrental-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true",
+            "userinfo.token.claim": "false",
+            "lightweight.claim": "false"
           }
         }
       ],
