@@ -2,14 +2,12 @@ import { createFileRoute } from '@tanstack/react-router'
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import { ShieldCheck, Clock, Star } from "lucide-react";
-import {useAuth} from "@/lib/use-auth.ts";
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
 function HomePage() {
-    const auth = useAuth();
   return (
     <main className="min-h-screen flex flex-col">
 
@@ -24,13 +22,6 @@ function HomePage() {
           <Link to="/browse">
             <Button size="lg">Browse Vehicles</Button>
           </Link>
-            <Button
-                size="sm"
-                disabled={!auth.isReady}
-                onClick={() => void auth.register(window.location.href)}
-            >
-                Sign up
-            </Button>
         </div>
 
       </section>
