@@ -30,7 +30,6 @@ public class BookingService : IBookingService
 
     public async Task<BookingConfirmationDto> CreateBookingAsync(CreateBookingDto dto, Guid? userId, string frontendBaseUrl)
     {
-        // Validate vehicle exists and is available for rental
         var vehicle = await _dbContext.Vehicles.FindAsync(dto.VehicleId);
         if (vehicle is null)
             throw new InvalidOperationException("Vehicle not found.");
@@ -38,21 +37,23 @@ public class BookingService : IBookingService
         if (vehicle.VehicleStatus != VehicleStatus.Active)
             throw new InvalidOperationException("Vehicle is not available for rental.");
 
-        // Normalize dates to UTC
         var startDate = DateTime.SpecifyKind(dto.StartDate.Date, DateTimeKind.Utc);
         var endDate = DateTime.SpecifyKind(dto.EndDate.Date, DateTimeKind.Utc);
 
-        // Validate dates
         if (startDate >= endDate)
             throw new InvalidOperationException("End date must be after start date.");
 
         if (startDate < DateTime.UtcNow.Date)
             throw new InvalidOperationException("Start date cannot be in the past.");
 
+        
+        var pendingExpiry = DateTime.UtcNow.AddMinutes(-10);
+
         // Check for overlapping bookings on this vehicle
         var hasOverlap = await _dbContext.Bookings.AnyAsync(b =>
             b.VehicleId == dto.VehicleId &&
             b.Status != BookingStatus.Cancelled &&
+            !(b.Status == BookingStatus.Pending && b.CreatedAt < pendingExpiry) &&
             b.StartDate < endDate &&
             b.EndDate > startDate);
 
