@@ -1,3 +1,4 @@
+using CarRentalSystem.Server.Models;
 using System.Security.Claims;
 using CarRentalSystem.Server.DTOs;
 using CarRentalSystem.Server.Services.Interfaces;
