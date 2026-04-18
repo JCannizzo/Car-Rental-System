@@ -9,7 +9,7 @@ export interface AuthContextValue {
   logout: (redirectUri?: string) => Promise<void>;
   register: (
     redirectUri?: string,
-    options?: { bookingConfirmationCode?: string },
+    options?: { bookingConfirmationCode?: string; bookingEmail?: string },
   ) => Promise<void>;
   user: AuthUser | null;
 }

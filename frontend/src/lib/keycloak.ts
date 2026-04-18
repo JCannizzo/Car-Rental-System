@@ -85,17 +85,25 @@ export function login(redirectUri = window.location.href) {
 
 export async function register(
   redirectUri = window.location.href,
-  options: { bookingConfirmationCode?: string } = {},
+  options: { bookingConfirmationCode?: string; bookingEmail?: string } = {},
 ) {
-  const { bookingConfirmationCode } = options;
-  if (!bookingConfirmationCode) {
+  const { bookingConfirmationCode, bookingEmail } = options;
+  const params = new URLSearchParams();
+  if (bookingConfirmationCode) {
+    params.set("bookingConfirmationCode", bookingConfirmationCode);
+  }
+  if (bookingEmail) {
+    params.set("email", bookingEmail);
+    params.set("expectedEmail", bookingEmail);
+  }
+
+  if ([...params.keys()].length === 0) {
     return keycloak.register({ redirectUri });
   }
 
   const url = await keycloak.createRegisterUrl({ redirectUri });
-  const hash = `bookingConfirmationCode=${encodeURIComponent(bookingConfirmationCode)}`;
   const separator = url.includes("#") ? "&" : "#";
-  window.location.assign(`${url}${separator}${hash}`);
+  window.location.assign(`${url}${separator}${params.toString()}`);
 }
 
 export function logout(redirectUri = window.location.origin) {

@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect } from "react";
+import { useMemo, useState, useLayoutEffect } from "react";
 import type { LazyOrNot } from "keycloakify/tools/LazyOrNot";
 import { kcSanitize } from "keycloakify/lib/kcSanitize";
 import { getKcClsx, type KcClsx } from "keycloakify/login/lib/kcClsx";
@@ -48,6 +48,33 @@ export default function Register(props: RegisterProps) {
 
   const [isFormSubmittable, setIsFormSubmittable] = useState(false);
   const [areTermsAccepted, setAreTermsAccepted] = useState(false);
+  const [emailMismatchError, setEmailMismatchError] = useState<string | null>(
+    null,
+  );
+
+  const expectedEmail = useMemo(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return null;
+    const value = new URLSearchParams(hash).get("expectedEmail");
+    return value ? value.trim().toLowerCase() : null;
+  }, []);
+
+  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    if (!expectedEmail) return;
+    const input = event.currentTarget.elements.namedItem("email") as
+      | HTMLInputElement
+      | null;
+    const entered = input?.value.trim().toLowerCase() ?? "";
+    if (entered !== expectedEmail) {
+      event.preventDefault();
+      setEmailMismatchError(
+        `Please use the email address you entered at checkout (${expectedEmail}) to link this booking to your account.`,
+      );
+      input?.focus();
+      return;
+    }
+    setEmailMismatchError(null);
+  };
 
   useLayoutEffect(() => {
     (window as unknown as Record<string, unknown>)["onSubmitRecaptcha"] = () => {
@@ -79,6 +106,7 @@ export default function Register(props: RegisterProps) {
         id="kc-register-form"
         action={url.registrationAction}
         method="post"
+        onSubmit={handleSubmit}
         className="space-y-4"
       >
         <UserProfileFormFields
@@ -117,6 +145,15 @@ export default function Register(props: RegisterProps) {
             {msg("backToLogin")}
           </a>
         </div>
+
+        {emailMismatchError ? (
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          >
+            {emailMismatchError}
+          </p>
+        ) : null}
 
         {recaptchaRequired && !recaptchaVisible && recaptchaAction !== undefined ? (
           <Button

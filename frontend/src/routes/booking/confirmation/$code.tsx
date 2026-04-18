@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,7 +15,7 @@ import { useAuth } from "@/lib/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
-import { CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 export const Route = createFileRoute("/booking/confirmation/$code")({
@@ -152,6 +153,7 @@ function BookingConfirmation() {
     if (mode === "register") {
       void auth.register(window.location.href, {
         bookingConfirmationCode: booking.confirmationCode,
+        bookingEmail: booking.guestEmail ?? undefined,
       });
       return;
     }
@@ -220,9 +222,11 @@ function BookingConfirmation() {
       </div>
 
       {claimError ? (
-        <p className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {claimError}
-        </p>
+        <Alert variant="destructive" className="mt-4 border-destructive/40 bg-destructive/5">
+          <AlertCircle />
+          <AlertTitle>We couldn&apos;t link this booking</AlertTitle>
+          <AlertDescription>{claimError}</AlertDescription>
+        </Alert>
       ) : null}
 
       {isPaid ? (
