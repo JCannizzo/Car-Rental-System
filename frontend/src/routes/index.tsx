@@ -1,10 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Button } from "@/components/ui/button";
-import { createRootRoute, Outlet, Link } from "@tanstack/react-router";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import { Field, FieldLabel } from "@/components/ui/field";
-import { Car, ShieldCheck, Clock, Star } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { ShieldCheck, Clock, Star } from "lucide-react";
 
 export const Route = createFileRoute('/')({
   component: HomePage,
