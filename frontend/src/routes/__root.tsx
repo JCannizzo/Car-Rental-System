@@ -56,6 +56,15 @@ function RootLayout() {
                   </Button>
                 </>
               )}
+              <Link to="/browse">
+                <Button variant="ghost" size="sm">Browse</Button>
+              </Link>    
+              <Link to="/auth" search={{ tab: "login" }}>
+                <Button variant="ghost" size="sm">Log in</Button>
+              </Link>
+              <Link to="/auth" search={{ tab: "register" }}>
+                <Button size="sm">Sign up</Button>
+              </Link>
             </div>
           </div>
           {auth.error ? (
