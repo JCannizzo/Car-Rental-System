@@ -3,16 +3,25 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSearch } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 
 export default function AuthPage() {
+  const search = useSearch({ from: "/auth" });
+  const tabFromUrl = (search as Record<string, string>).tab === "register" ? "register" : "login";
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
+
+  useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50 p-4">
-      <Tabs defaultValue="login" className="w-full max-w-md">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full max-w-md">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="login">Login</TabsTrigger>
           <TabsTrigger value="register">Register</TabsTrigger>
         </TabsList>
-
         {/* SCRUM-71: Login Page */}
         <TabsContent value="login">
           <Card>
@@ -35,7 +44,6 @@ export default function AuthPage() {
             </CardFooter>
           </Card>
         </TabsContent>
-
         {/* SCRUM-72: Register Page */}
         <TabsContent value="register">
           <Card>

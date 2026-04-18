@@ -3,7 +3,6 @@ import { createRootRoute, Outlet, Link } from "@tanstack/react-router";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { Car } from "lucide-react";
-
 export const Route = createRootRoute({
   component: () => (
     <div className="min-h-screen bg-background">

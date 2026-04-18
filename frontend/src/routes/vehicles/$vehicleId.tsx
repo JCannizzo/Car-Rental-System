@@ -93,6 +93,7 @@ function VehicleDetailContent({
   initialEndDate?: string;
 }) {
   const [activeImage, setActiveImage] = useState<"side" | "front">("side");
+  const [isImageExpanded, setIsImageExpanded] = useState(false);
 
   const [date, setDate] = useState<DateRange | undefined>(() => {
     if (initialStartDate && initialEndDate) {
@@ -174,13 +175,32 @@ function VehicleDetailContent({
 
       <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
         <div className="space-y-6">
-          <div className="rounded-xl overflow-hidden border border-border bg-muted/30">
+          <div
+            className="rounded-xl overflow-hidden border border-border bg-muted/30 cursor-pointer"
+            onClick={() => setIsImageExpanded(true)}
+          >
             <img
               src={imageUrl}
               alt={`${vehicle.make} ${vehicle.model}`}
               className="w-full aspect-[16/10] object-cover"
             />
           </div>
+          {isImageExpanded && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+              onClick={() => setIsImageExpanded(false)}
+            >
+              <img
+                src={imageUrl}
+                alt={`${vehicle.make} ${vehicle.model}`}
+                className="max-w-[90vw] max-h-[90vh] rounded-2xl border border-slate-300 bg-white object-contain shadow-2xl"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsImageExpanded(false);
+                }}
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             <button
               onClick={() => setActiveImage("side")}
