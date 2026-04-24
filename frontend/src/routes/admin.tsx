@@ -20,6 +20,7 @@ import {
   ClipboardList,
   Download,
   Loader2,
+  LogOut,
   Plus,
   RotateCcw,
 } from "lucide-react";
@@ -120,9 +121,11 @@ function AdminLoadingState() {
 }
 
 function AdminShell({ children }: { children: React.ReactNode }) {
+  const auth = useAuth();
+
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-muted/30">
-      <div className="grid min-h-[calc(100vh-65px)] lg:grid-cols-[260px_minmax(0,1fr)]">
+    <div className="min-h-screen bg-muted/30">
+      <div className="grid min-h-screen lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden border-r bg-background lg:flex lg:flex-col">
           <div className="flex items-center gap-3 border-b px-5 py-5">
             <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
@@ -139,17 +142,25 @@ function AdminShell({ children }: { children: React.ReactNode }) {
           <AdminNav className="flex-1 p-4" />
 
           <div className="border-t p-4">
-            <div className="rounded-lg border bg-muted/50 p-3">
+            <div className="mb-3 rounded-lg border bg-muted/50 p-3">
               <p className="text-sm font-semibold">Admin Console</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Fleet management
               </p>
             </div>
+            <Button
+              className="w-full justify-start"
+              variant="outline"
+              onClick={() => void auth.logout(window.location.origin)}
+            >
+              <LogOut className="h-4 w-4" />
+              Log out
+            </Button>
           </div>
         </aside>
 
         <main className="min-w-0">
-          <header className="sticky top-[65px] z-30 border-b bg-muted/80 px-4 py-4 backdrop-blur lg:px-7">
+          <header className="sticky top-0 z-30 border-b bg-muted/80 px-4 py-4 backdrop-blur lg:px-7">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -170,6 +181,14 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                   <Button>
                     <Plus />
                     Add vehicle
+                  </Button>
+                  <Button
+                    className="lg:hidden"
+                    variant="outline"
+                    onClick={() => void auth.logout(window.location.origin)}
+                  >
+                    <LogOut />
+                    Log out
                   </Button>
                 </div>
               </div>
