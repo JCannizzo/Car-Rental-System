@@ -28,6 +28,11 @@ function RootLayout() {
               <Link to="/browse">
                 <Button variant="ghost" size="sm">Browse</Button>
               </Link>
+              {auth.user?.roles.some((role) => role.toLowerCase() === "admin") ? (
+                <Link to="/admin">
+                  <Button variant="ghost" size="sm">Admin</Button>
+                </Link>
+              ) : null}
             </div>
             <div className="flex items-center gap-3">
               {auth.isReady && auth.isAuthenticated ? (

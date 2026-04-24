@@ -15,6 +15,8 @@ export interface Vehicle {
   features: string[];
   imageUrl: string;
   imageUrlFront: string;
+  licensePlate?: string;
+  status?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -240,5 +242,15 @@ export async function fetchVehicles(
   if (!response.ok) {
     throw await readApiError(response, "Failed to fetch vehicles");
   }
+  return response.json();
+}
+
+export async function fetchAdminVehicles(): Promise<Vehicle[]> {
+  const response = await apiFetch("/api/Vehicle/admin");
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch admin vehicles");
+  }
+
   return response.json();
 }
