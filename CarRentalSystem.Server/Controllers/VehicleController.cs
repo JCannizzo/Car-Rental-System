@@ -1,5 +1,6 @@
 using CarRentalSystem.Server.DTOs;
 using CarRentalSystem.Server.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,7 +25,7 @@ public class VehicleController : ControllerBase
     /// Search available vehicles for rental.
     /// </summary>
     /// <remarks>
-    /// Returns a cursor-paginated list of vehicles that are currently active and not
+    /// Returns a cursor-paginated list of vehicles that are currently available and not
     /// booked during the requested date range. Results are ordered by price (low to high).
     ///
     /// **Pagination:**
@@ -74,5 +75,102 @@ public class VehicleController : ControllerBase
     {
         var vehicle = await _vehicleService.GetVehicleAsync(id);
         return vehicle == null ? NotFound() : Ok(vehicle);
+    }
+
+    /// <summary>
+    /// Get all vehicles for admin inventory management.
+    /// </summary>
+    [HttpGet("admin")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<List<VehicleDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAll()
+    {
+        var vehicles = await _vehicleService.GetAllAsync();
+        return Ok(vehicles);
+    }
+
+    /// <summary>
+    /// Create a new vehicle in the inventory.
+    /// </summary>
+    [HttpPost]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<VehicleDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Create([FromBody] VehicleUpsertDto dto)
+    {
+        try
+        {
+            var vehicle = await _vehicleService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = vehicle.Id }, vehicle);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update an existing vehicle in the inventory.
+    /// </summary>
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<VehicleDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] VehicleUpsertDto dto)
+    {
+        try
+        {
+            var vehicle = await _vehicleService.UpdateAsync(id, dto);
+            return vehicle == null ? NotFound() : Ok(vehicle);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Delete a vehicle from the inventory.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var deleted = await _vehicleService.DeleteAsync(id);
+        return deleted ? NoContent() : NotFound();
+    }
+
+    /// <summary>
+    /// Update the status of a vehicle in the inventory.
+    /// </summary>
+    [HttpPatch("{id:guid}/status")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<VehicleDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateVehicleStatusDto dto)
+    {
+        try
+        {
+            var vehicle = await _vehicleService.UpdateStatusAsync(id, dto.Status);
+            return vehicle == null ? NotFound() : Ok(vehicle);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 }

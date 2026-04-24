@@ -23,24 +23,7 @@ public class VehicleService : IVehicleService
     public async Task<VehicleDto?> GetVehicleAsync(Guid id)
     {
         var vehicle = await _dbContext.Vehicles.FindAsync(id);
-        if (vehicle == null) return null;
-        return new VehicleDto
-        {
-            Id = vehicle.Id,
-            Make = vehicle.Make,
-            Model = vehicle.Model,
-            Year = vehicle.Year,
-            Category = vehicle.Category.ToString(),
-            Transmission = vehicle.Transmission,
-            FuelType = vehicle.FuelType,
-            Seats = vehicle.Seats,
-            Doors = vehicle.Doors,
-            PricePerDay = vehicle.PricePerDay,
-            Mileage = vehicle.Mileage,
-            Features = vehicle.Features,
-            ImageUrl = vehicle.ImageUrl,
-            ImageUrlFront = vehicle.ImageUrlFront,
-        };
+        return vehicle == null ? null : MapToDto(vehicle);
     }
 
     public async Task<PaginatedResult<VehicleDto>> GetAvailableAsync(VehicleQueryParams query)
@@ -48,7 +31,7 @@ public class VehicleService : IVehicleService
         var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
 
         var q = _dbContext.Vehicles
-            .Where(v => v.VehicleStatus == VehicleStatus.Active);
+            .Where(v => v.VehicleStatus == VehicleStatus.Available);
 
         // Filters
         if (query.Category.HasValue)
@@ -88,28 +71,15 @@ public class VehicleService : IVehicleService
                 (v.PricePerDay == cursorPrice && v.Id.CompareTo(cursorId) > 0));
         }
 
-        var items = await q
+        var vehicles = await q
             .OrderBy(v => v.PricePerDay)
             .ThenBy(v => v.Id)
             .Take(pageSize + 1)
-            .Select(v => new VehicleDto
-            {
-                Id = v.Id,
-                Make = v.Make,
-                Model = v.Model,
-                Year = v.Year,
-                Category = v.Category.ToString(),
-                Transmission = v.Transmission,
-                FuelType = v.FuelType,
-                Seats = v.Seats,
-                Doors = v.Doors,
-                PricePerDay = v.PricePerDay,
-                Mileage = v.Mileage,
-                Features = v.Features,
-                ImageUrl = v.ImageUrl,
-                ImageUrlFront = v.ImageUrlFront,
-            })
             .ToListAsync();
+
+        var items = vehicles
+            .Select(MapToDto)
+            .ToList();
 
         var hasMore = items.Count > pageSize;
         if (hasMore)
@@ -152,28 +122,152 @@ public class VehicleService : IVehicleService
         }
     }
 
-    public Task<List<VehicleDto>> GetAllAsync()
+    public async Task<List<VehicleDto>> GetAllAsync()
     {
-        throw new NotImplementedException();
+        var vehicles = await _dbContext.Vehicles
+            .OrderBy(v => v.Make)
+            .ThenBy(v => v.Model)
+            .ThenBy(v => v.Year)
+            .ToListAsync();
+
+        return vehicles
+            .Select(MapToDto)
+            .ToList();
     }
 
-    public Task<VehicleDto> CreateAsync()
+    public async Task<VehicleDto> CreateAsync(VehicleUpsertDto dto)
     {
-        throw new NotImplementedException();
+        var vehicle = new Vehicle
+        {
+            Id = Guid.NewGuid()
+        };
+        ApplyVehicleChanges(vehicle, dto);
+
+        _dbContext.Vehicles.Add(vehicle);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Created vehicle {VehicleId} with status {Status}", vehicle.Id, vehicle.VehicleStatus);
+        return MapToDto(vehicle);
     }
 
-    public Task<VehicleDto> UpdateAsync(Guid id)
+    public async Task<VehicleDto?> UpdateAsync(Guid id, VehicleUpsertDto dto)
     {
-        throw new NotImplementedException();
+        var vehicle = await _dbContext.Vehicles.FindAsync(id);
+        if (vehicle == null)
+        {
+            return null;
+        }
+
+        ApplyVehicleChanges(vehicle, dto);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Updated vehicle {VehicleId}", vehicle.Id);
+        return MapToDto(vehicle);
     }
 
-    public Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id)
     {
-        throw new NotImplementedException();
+        var vehicle = await _dbContext.Vehicles.FindAsync(id);
+        if (vehicle == null)
+        {
+            return false;
+        }
+
+        _dbContext.Vehicles.Remove(vehicle);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Deleted vehicle {VehicleId}", id);
+        return true;
     }
 
-    public Task<bool> UpdateStatusAsync(Guid id, VehicleStatus status)
+    public async Task<VehicleDto?> UpdateStatusAsync(Guid id, string status)
     {
-        throw new NotImplementedException();
+        var vehicle = await _dbContext.Vehicles.FindAsync(id);
+        if (vehicle == null)
+        {
+            return null;
+        }
+
+        vehicle.VehicleStatus = ParseStatus(status);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Updated vehicle {VehicleId} status to {Status}", id, vehicle.VehicleStatus);
+        return MapToDto(vehicle);
+    }
+
+    private static VehicleDto MapToDto(Vehicle vehicle)
+    {
+        return new VehicleDto
+        {
+            Id = vehicle.Id,
+            Make = vehicle.Make,
+            Model = vehicle.Model,
+            Year = vehicle.Year,
+            Category = vehicle.Category.ToString(),
+            Transmission = vehicle.Transmission,
+            FuelType = vehicle.FuelType,
+            Seats = vehicle.Seats,
+            Doors = vehicle.Doors,
+            PricePerDay = vehicle.PricePerDay,
+            Mileage = vehicle.Mileage,
+            Features = vehicle.Features,
+            ImageUrl = vehicle.ImageUrl,
+            ImageUrlFront = vehicle.ImageUrlFront,
+            LicensePlate = vehicle.LicensePlate,
+            Status = ToApiStatus(vehicle.VehicleStatus),
+        };
+    }
+
+    private static void ApplyVehicleChanges(Vehicle vehicle, VehicleUpsertDto dto)
+    {
+        vehicle.Make = dto.Make.Trim();
+        vehicle.Model = dto.Model.Trim();
+        vehicle.Year = dto.Year;
+        vehicle.Category = ParseCategory(dto.Category);
+        vehicle.Transmission = dto.Transmission.Trim();
+        vehicle.FuelType = dto.FuelType.Trim();
+        vehicle.Seats = dto.Seats;
+        vehicle.Doors = dto.Doors;
+        vehicle.PricePerDay = dto.PricePerDay;
+        vehicle.Mileage = dto.Mileage;
+        vehicle.Features = (dto.Features ?? [])
+            .Where(feature => !string.IsNullOrWhiteSpace(feature))
+            .Select(feature => feature.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        vehicle.ImageUrl = (dto.ImageUrl ?? string.Empty).Trim();
+        vehicle.ImageUrlFront = (dto.ImageUrlFront ?? string.Empty).Trim();
+        vehicle.LicensePlate = dto.LicensePlate.Trim();
+        vehicle.VehicleStatus = ParseStatus(dto.Status);
+    }
+
+    private static VehicleCategory ParseCategory(string category)
+    {
+        if (Enum.TryParse<VehicleCategory>(category, true, out var parsedCategory))
+        {
+            return parsedCategory;
+        }
+
+        throw new ArgumentException($"Invalid vehicle category '{category}'.");
+    }
+
+    private static VehicleStatus ParseStatus(string status)
+    {
+        if (string.Equals(status, "active", StringComparison.OrdinalIgnoreCase))
+        {
+            return VehicleStatus.Available;
+        }
+
+        if (Enum.TryParse<VehicleStatus>(status, true, out var parsedStatus))
+        {
+            return parsedStatus;
+        }
+
+        throw new ArgumentException($"Invalid vehicle status '{status}'.");
+    }
+
+    private static string ToApiStatus(VehicleStatus status)
+    {
+        return status.ToString().ToLowerInvariant();
     }
 }

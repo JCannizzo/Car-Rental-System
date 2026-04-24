@@ -46,4 +46,10 @@ public class VehicleDto
 
     /// <summary>URL for the front-view image of the vehicle.</summary>
     public string ImageUrlFront { get; set; } = string.Empty;
+
+    /// <summary>Vehicle license plate number.</summary>
+    public string LicensePlate { get; set; } = string.Empty;
+
+    /// <summary>Current inventory status of the vehicle.</summary>
+    public string Status { get; set; } = string.Empty;
 }
