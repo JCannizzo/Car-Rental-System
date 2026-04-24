@@ -120,6 +120,7 @@ function EditVehiclePage() {
       );
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["vehicle", vehicleId] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-vehicles"] }),
         queryClient.invalidateQueries({
           queryKey: ["admin-vehicle-inventory"],
         }),
@@ -140,6 +141,7 @@ function EditVehiclePage() {
     onSuccess: async () => {
       await Promise.all([
         queryClient.removeQueries({ queryKey: ["vehicle", vehicleId] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-vehicles"] }),
         queryClient.invalidateQueries({
           queryKey: ["admin-vehicle-inventory"],
         }),

@@ -13,14 +13,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { fetchAdminVehicles, type Vehicle } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  AlertTriangle,
   CalendarClock,
   Car,
+  DollarSign,
+  PlusCircle,
+  Wrench,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
@@ -49,62 +52,71 @@ function AdminDashboardPage() {
 }
 
 function renderDashboardContent(vehicles: Vehicle[]) {
-  const totalVehicles = vehicles.length;
-  const activeRentals = vehicles.filter((vehicle) =>
-    vehicle.status?.toLowerCase() === "rented"
-  ).length;
-  const vehiclesNeedingAttention = vehicles.filter((vehicle) => {
-    const status = vehicle.status?.toLowerCase();
-    return status === "maintenance" || status === "retired";
-  }).length;
-  const attentionVehicles = vehicles
-    .filter((vehicle) => vehicle.status?.toLowerCase() !== "available")
-    .slice(0, 4);
+  const summary = getFleetSummary(vehicles);
+  const priorityVehicles = getPriorityVehicles(vehicles).slice(0, 6);
 
   return (
     <section className="grid gap-5 p-4 lg:p-7">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Car}
           label="Total vehicles"
-          value={totalVehicles}
+          value={summary.total}
           badge="Fleet"
           badgeClassName="bg-sky-50 text-sky-700"
-          note={`${vehicles.filter((vehicle) => vehicle.status?.toLowerCase() === "available").length} available across the fleet`}
+          note={`${summary.available} available across the fleet`}
         />
         <StatCard
           icon={CalendarClock}
           label="Active rentals"
-          value={activeRentals}
+          value={summary.rented}
           badge="Live"
-          badgeClassName="bg-emerald-50 text-emerald-700"
+          badgeClassName="bg-sky-50 text-sky-700"
           note="Vehicles currently marked as rented"
         />
         <StatCard
-          icon={AlertTriangle}
-          label="Needs attention"
-          value={vehiclesNeedingAttention}
-          badge="Review"
+          icon={Wrench}
+          label="Maintenance"
+          value={summary.maintenance}
+          badge="Service"
           badgeClassName="bg-amber-50 text-amber-700"
-          note="Maintenance and retired vehicles"
+          note="Vehicles paused for inspection or repair"
+        />
+        <StatCard
+          icon={DollarSign}
+          label="Average rate"
+          value={summary.averageRate}
+          badge="Pricing"
+          badgeClassName="bg-emerald-50 text-emerald-700"
+          note="Average daily rate across loaded inventory"
+          valuePrefix="$"
         />
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
-        <QuickLink
-          href="/admin/inventory"
-          title="Inventory"
-          description="Update status and vehicle details"
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <OperationLink
+          icon={PlusCircle}
+          title="Add vehicle"
+          description="Create a new fleet record"
+          search={{ addVehicle: true }}
         />
-        <QuickLink
-          href="/admin/bookings"
-          title="Bookings"
-          description="Review active and upcoming rentals"
+        <OperationLink
+          icon={Wrench}
+          title="Maintenance queue"
+          description={`${summary.maintenance} vehicles need service review`}
+          search={{ status: "Maintenance" }}
         />
-        <QuickLink
-          href="/admin/returns"
-          title="Returns"
-          description="Check vehicles back into the fleet"
+        <OperationLink
+          icon={CalendarClock}
+          title="Currently rented"
+          description={`${summary.rented} vehicles are out with renters`}
+          search={{ status: "Rented" }}
+        />
+        <OperationLink
+          icon={Car}
+          title="Ready to rent"
+          description={`${summary.available} vehicles are available`}
+          search={{ status: "Available" }}
         />
       </div>
 
@@ -115,60 +127,89 @@ function renderDashboardContent(vehicles: Vehicle[]) {
               <div>
                 <CardTitle>Inventory Snapshot</CardTitle>
                 <CardDescription>
-                  Vehicles requiring operational review
+                  Priority vehicles from the admin inventory
                 </CardDescription>
               </div>
-              <Badge variant="secondary">{vehiclesNeedingAttention} open</Badge>
+              <Button asChild size="sm" variant="outline">
+                <Link to="/admin/inventory">Open inventory</Link>
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left text-sm">
+              <table className="w-full min-w-[780px] text-left text-sm">
                 <thead className="border-b text-xs uppercase text-muted-foreground">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Vehicle</th>
                     <th className="px-4 py-3 font-semibold">Plate</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
+                    <th className="px-4 py-3 font-semibold">Mileage</th>
+                    <th className="px-4 py-3 text-right font-semibold">Rate</th>
                     <th className="px-4 py-3 font-semibold">Next action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attentionVehicles.length > 0 ? (
-                    attentionVehicles.map((vehicle) => (
-                      <tr key={vehicle.id} className="border-b last:border-0">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <div className="grid h-9 w-11 place-items-center rounded-lg border bg-muted">
-                              <Car className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <div>
-                              <p className="font-semibold">
-                                {vehicle.make} {vehicle.model}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {vehicle.category} · {vehicle.year}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {vehicle.licensePlate || "Unassigned"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <StatusBadge status={vehicle.status} />
-                        </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {getNextAction(vehicle.status)}
-                        </td>
-                      </tr>
-                    ))
+                  {priorityVehicles.length > 0 ? (
+                    priorityVehicles.map((vehicle) => {
+                      const imageUrl = vehicle.imageUrlFront || vehicle.imageUrl;
+
+                      return (
+                        <tr
+                          key={vehicle.id}
+                          className="border-b transition-colors last:border-0 hover:bg-muted/50"
+                        >
+                          <td className="px-4 py-3">
+                            <Link
+                              className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                              to="/admin/inventory/$vehicleId"
+                              params={{ vehicleId: vehicle.id }}
+                            >
+                              {imageUrl ? (
+                                <img
+                                  alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                                  className="h-12 w-16 rounded-md border object-cover"
+                                  src={imageUrl}
+                                />
+                              ) : (
+                                <div className="grid h-12 w-16 place-items-center rounded-md border bg-muted">
+                                  <Car className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-semibold">
+                                  {vehicle.make} {vehicle.model}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {vehicle.category} · {vehicle.year}
+                                </p>
+                              </div>
+                            </Link>
+                          </td>
+                          <td className="px-4 py-3">
+                            {vehicle.licensePlate || "Unassigned"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <StatusBadge status={vehicle.status} />
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {numberFormatter.format(vehicle.mileage)} mi
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium">
+                            {currencyFormatter.format(vehicle.pricePerDay)}
+                          </td>
+                          <td className="px-4 py-3 text-muted-foreground">
+                            {getNextAction(vehicle.status)}
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td
                         className="px-4 py-8 text-center text-muted-foreground"
-                        colSpan={4}
+                        colSpan={6}
                       >
-                        No vehicles need attention right now.
+                        No inventory records are loaded yet.
                       </td>
                     </tr>
                   )}
@@ -187,17 +228,20 @@ function renderDashboardContent(vehicles: Vehicle[]) {
             <QueueItem
               tone="warning"
               title="Maintenance review"
-              description={`${vehiclesNeedingAttention} vehicles are out of normal rental rotation.`}
+              description={`${summary.needsAttention} vehicles are out of normal rental rotation.`}
+              search={{ status: "Maintenance" }}
             />
             <QueueItem
               tone="info"
               title="Active rental monitoring"
-              description={`${activeRentals} vehicles are currently marked as rented.`}
+              description={`${summary.rented} vehicles are currently marked as rented.`}
+              search={{ status: "Rented" }}
             />
             <QueueItem
               tone="success"
               title="Fleet availability"
-              description={`${Math.max(totalVehicles - activeRentals - vehiclesNeedingAttention, 0)} vehicles are available or ready to schedule.`}
+              description={`${summary.available} vehicles are available and ready to schedule.`}
+              search={{ status: "Available" }}
             />
           </CardContent>
         </Card>
@@ -212,6 +256,7 @@ function StatCard({
   icon: Icon,
   label,
   note,
+  valuePrefix = "",
   value,
 }: {
   badge: string;
@@ -220,6 +265,7 @@ function StatCard({
   label: string;
   note: string;
   value: number;
+  valuePrefix?: string;
 }) {
   return (
     <Card className="rounded-lg shadow-sm">
@@ -234,7 +280,10 @@ function StatCard({
       <CardContent>
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-4xl font-bold leading-none">{value}</p>
+            <p className="text-4xl font-bold leading-none">
+              {valuePrefix}
+              {numberFormatter.format(value)}
+            </p>
             <p className="mt-3 text-sm text-muted-foreground">{note}</p>
           </div>
           <div className="grid h-10 w-10 place-items-center rounded-lg bg-muted">
@@ -246,30 +295,38 @@ function StatCard({
   );
 }
 
-function QuickLink({
+function OperationLink({
   description,
-  href,
+  icon: Icon,
+  search,
   title,
 }: {
   description: string;
-  href: string;
+  icon: typeof Car;
+  search?: InventorySearch;
   title: string;
 }) {
   return (
-    <a
+    <Link
       className="flex items-center justify-between gap-4 rounded-lg border bg-background p-4 shadow-sm transition-colors hover:bg-muted/60"
-      href={href}
+      to="/admin/inventory"
+      search={search}
     >
-      <span>
-        <span className="block text-sm font-semibold">{title}</span>
-        <span className="mt-1 block text-sm text-muted-foreground">
-          {description}
+      <span className="flex min-w-0 items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-muted">
+          <Icon className="h-5 w-5 text-muted-foreground" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold">{title}</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            {description}
+          </span>
         </span>
       </span>
       <span aria-hidden="true" className="text-xl text-muted-foreground">
         ›
       </span>
-    </a>
+    </Link>
   );
 }
 
@@ -277,10 +334,12 @@ function QueueItem({
   description,
   title,
   tone,
+  search,
 }: {
   description: string;
   title: string;
   tone: "success" | "warning" | "info";
+  search: InventorySearch;
 }) {
   const toneClassName =
     tone === "success"
@@ -290,14 +349,93 @@ function QueueItem({
         : "bg-sky-600";
 
   return (
-    <article className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 border-b px-4 py-4 last:border-0">
+    <Link
+      className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 border-b px-4 py-4 transition-colors last:border-0 hover:bg-muted/50"
+      to="/admin/inventory"
+      search={search}
+    >
       <span className={cn("mt-1.5 h-2.5 w-2.5 rounded-full", toneClassName)} />
       <div>
         <p className="font-semibold">{title}</p>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
-    </article>
+    </Link>
   );
+}
+
+const currencyFormatter = new Intl.NumberFormat("en-US", {
+  currency: "USD",
+  maximumFractionDigits: 0,
+  style: "currency",
+});
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+
+type InventorySearch = {
+  addVehicle?: boolean;
+  status?: string;
+};
+
+function getFleetSummary(vehicles: Vehicle[]) {
+  let available = 0;
+  let rented = 0;
+  let maintenance = 0;
+  let retired = 0;
+  let rateTotal = 0;
+
+  for (const vehicle of vehicles) {
+    rateTotal += vehicle.pricePerDay;
+
+    switch (vehicle.status?.toLowerCase()) {
+      case "available":
+        available += 1;
+        break;
+      case "rented":
+        rented += 1;
+        break;
+      case "maintenance":
+        maintenance += 1;
+        break;
+      case "retired":
+        retired += 1;
+        break;
+      default:
+        break;
+    }
+  }
+
+  return {
+    available,
+    averageRate:
+      vehicles.length > 0 ? Math.round(rateTotal / vehicles.length) : 0,
+    maintenance,
+    needsAttention: maintenance + retired,
+    rented,
+    retired,
+    total: vehicles.length,
+  };
+}
+
+function getPriorityVehicles(vehicles: Vehicle[]) {
+  const statusPriority = new Map([
+    ["maintenance", 0],
+    ["retired", 1],
+    ["rented", 2],
+    ["available", 3],
+  ]);
+
+  return [...vehicles].sort((firstVehicle, secondVehicle) => {
+    const firstStatusPriority =
+      statusPriority.get(firstVehicle.status?.toLowerCase() ?? "") ?? 4;
+    const secondStatusPriority =
+      statusPriority.get(secondVehicle.status?.toLowerCase() ?? "") ?? 4;
+
+    if (firstStatusPriority !== secondStatusPriority) {
+      return firstStatusPriority - secondStatusPriority;
+    }
+
+    return secondVehicle.mileage - firstVehicle.mileage;
+  });
 }
 
 function getNextAction(status?: string) {

@@ -59,6 +59,16 @@ import {
 const PAGE_SIZE = 15;
 const SEARCH_DEBOUNCE_MS = 350;
 
+interface InventorySearchParams {
+  addVehicle?: boolean;
+  category?: VehicleCategory | "all";
+  page?: number;
+  search?: string;
+  sortBy?: AdminVehicleSortBy;
+  sortDirection?: SortDirection;
+  status?: string;
+}
+
 function useDebouncedValue<T>(value: T, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -73,27 +83,107 @@ function useDebouncedValue<T>(value: T, delay: number) {
   return debouncedValue;
 }
 
+function parseCategorySearch(value: unknown) {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  if (value === "all" || VEHICLE_CATEGORIES.includes(value as VehicleCategory)) {
+    return value as VehicleCategory | "all";
+  }
+
+  return undefined;
+}
+
+function parsePageSearch(value: unknown) {
+  const page = typeof value === "string" ? Number(value) : value;
+
+  return typeof page === "number" && Number.isInteger(page) && page > 0
+    ? page
+    : undefined;
+}
+
+function parseSortBySearch(value: unknown) {
+  const sortOptions: AdminVehicleSortBy[] = [
+    "vehicle",
+    "category",
+    "plate",
+    "status",
+    "mileage",
+    "rate",
+    "specs",
+  ];
+
+  return typeof value === "string" &&
+    sortOptions.includes(value as AdminVehicleSortBy)
+    ? (value as AdminVehicleSortBy)
+    : undefined;
+}
+
+function parseSortDirectionSearch(value: unknown) {
+  return value === "asc" || value === "desc" ? value : undefined;
+}
+
 export const Route = createFileRoute("/admin/inventory")({
   component: AdminInventoryPage,
+  validateSearch: (search: Record<string, unknown>): InventorySearchParams => ({
+    addVehicle: search.addVehicle === true || search.addVehicle === "true",
+    category: parseCategorySearch(search.category),
+    page: parsePageSearch(search.page),
+    search: typeof search.search === "string" ? search.search : undefined,
+    sortBy: parseSortBySearch(search.sortBy),
+    sortDirection: parseSortDirectionSearch(search.sortDirection),
+    status: typeof search.status === "string" ? search.status : undefined,
+  }),
 });
 
 function AdminInventoryPage() {
   const location = useLocation();
+  const searchParams = Route.useSearch();
   const { auth, isAdmin, isAllowed } = useAdminAccess("/admin/inventory");
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<VehicleCategory | "all">("all");
-  const [status, setStatus] = useState("all");
-  const [sortBy, setSortBy] = useState<AdminVehicleSortBy>("vehicle");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [page, setPage] = useState(searchParams.page ?? 1);
+  const [search, setSearch] = useState(searchParams.search ?? "");
+  const [category, setCategory] = useState<VehicleCategory | "all">(
+    searchParams.category ?? "all",
+  );
+  const [status, setStatus] = useState(searchParams.status ?? "all");
+  const [sortBy, setSortBy] = useState<AdminVehicleSortBy>(
+    searchParams.sortBy ?? "vehicle",
+  );
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    searchParams.sortDirection ?? "asc",
+  );
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
-  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
+  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(
+    searchParams.addVehicle ?? false,
+  );
   const [vehicleForm, setVehicleForm] =
     useState<VehicleFormState>(initialVehicleForm);
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const isInventoryIndex = location.pathname === "/admin/inventory";
+
+  useEffect(() => {
+    setPage(searchParams.page ?? 1);
+    setSearch(searchParams.search ?? "");
+    setCategory(searchParams.category ?? "all");
+    setStatus(searchParams.status ?? "all");
+    setSortBy(searchParams.sortBy ?? "vehicle");
+    setSortDirection(searchParams.sortDirection ?? "asc");
+
+    if (searchParams.addVehicle) {
+      setIsAddVehicleOpen(true);
+    }
+  }, [
+    searchParams.addVehicle,
+    searchParams.category,
+    searchParams.page,
+    searchParams.search,
+    searchParams.sortBy,
+    searchParams.sortDirection,
+    searchParams.status,
+  ]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
@@ -157,6 +247,7 @@ function AdminInventoryPage() {
       await queryClient.invalidateQueries({
         queryKey: ["admin-vehicle-inventory"],
       });
+      await queryClient.invalidateQueries({ queryKey: ["admin-vehicles"] });
     },
   });
 
