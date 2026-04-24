@@ -47,6 +47,24 @@ export interface AdminVehicleQueryParams {
   sortDirection?: SortDirection;
 }
 
+export interface VehicleUpsertRequest {
+  make: string;
+  model: string;
+  year: number;
+  category: VehicleCategory;
+  transmission: string;
+  fuelType: string;
+  seats: number;
+  doors: number;
+  pricePerDay: number;
+  mileage: number;
+  features: string[];
+  imageUrl: string;
+  imageUrlFront: string;
+  licensePlate: string;
+  status: string;
+}
+
 export const VEHICLE_CATEGORIES = [
   "Economy",
   "Sedan",
@@ -301,6 +319,21 @@ export async function fetchAdminVehicleInventory(
 
   if (!response.ok) {
     throw await readApiError(response, "Failed to fetch inventory vehicles");
+  }
+
+  return response.json();
+}
+
+export async function createVehicle(
+  data: VehicleUpsertRequest,
+): Promise<Vehicle> {
+  const response = await apiFetch("/api/Vehicle", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to add vehicle");
   }
 
   return response.json();
