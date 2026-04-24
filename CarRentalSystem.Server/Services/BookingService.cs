@@ -34,7 +34,7 @@ public class BookingService : IBookingService
         if (vehicle is null)
             throw new InvalidOperationException("Vehicle not found.");
 
-        if (vehicle.VehicleStatus != VehicleStatus.Active)
+        if (vehicle.VehicleStatus != VehicleStatus.Available)
             throw new InvalidOperationException("Vehicle is not available for rental.");
 
         var startDate = DateTime.SpecifyKind(dto.StartDate.Date, DateTimeKind.Utc);
