@@ -35,12 +35,24 @@ import {
   type VehicleCategory,
   type VehicleUpsertRequest,
 } from "@/lib/api";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { CheckCircle2, PlusCircle, XCircle } from "lucide-react";
-import { type FormEvent, type ReactNode, useCallback, useState } from "react";
+import { CheckCircle2, ChevronDown, PlusCircle, XCircle } from "lucide-react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 const PAGE_SIZE = 15;
+const SEARCH_DEBOUNCE_MS = 350;
 const VEHICLE_STATUSES = ["Available", "Rented", "Maintenance", "Retired"];
 
 interface VehicleFormState {
@@ -79,6 +91,20 @@ const initialVehicleForm: VehicleFormState = {
   status: "Available",
 };
 
+function useDebouncedValue<T>(value: T, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export const Route = createFileRoute("/admin/inventory")({
   component: AdminInventoryPage,
 });
@@ -92,6 +118,8 @@ function AdminInventoryPage() {
   const [status, setStatus] = useState("all");
   const [sortBy, setSortBy] = useState<AdminVehicleSortBy>("vehicle");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
+  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [vehicleForm, setVehicleForm] =
     useState<VehicleFormState>(initialVehicleForm);
   const [formError, setFormError] = useState("");
@@ -155,6 +183,7 @@ function AdminInventoryPage() {
       setStatus("all");
       setSortBy("vehicle");
       setSortDirection("asc");
+      setIsAddVehicleOpen(false);
       await queryClient.invalidateQueries({
         queryKey: ["admin-vehicle-inventory"],
       });
@@ -245,7 +274,7 @@ function AdminInventoryPage() {
         category,
         page,
         pageSize: PAGE_SIZE,
-        search,
+        search: debouncedSearch,
         sortBy,
         sortDirection,
         status,
@@ -254,12 +283,13 @@ function AdminInventoryPage() {
       "admin-vehicle-inventory",
       page,
       PAGE_SIZE,
-      search,
+      debouncedSearch,
       category,
       status,
       sortBy,
       sortDirection,
     ],
+    placeholderData: keepPreviousData,
     retry: false,
   });
 
@@ -276,8 +306,8 @@ function AdminInventoryPage() {
   return (
     <AdminShell title="Inventory">
       <section className="grid gap-5 p-4 lg:p-7">
-        <Card className="rounded-lg shadow-sm">
-          <CardHeader className="border-b">
+        <Card className="rounded-lg shadow-sm" size="sm">
+          <CardHeader className={isAddVehicleOpen ? "border-b" : undefined}>
             <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <CardTitle>Add Vehicle</CardTitle>
@@ -285,10 +315,36 @@ function AdminInventoryPage() {
                   Create a new fleet record for the admin inventory.
                 </CardDescription>
               </div>
+              <Button
+                aria-expanded={isAddVehicleOpen}
+                aria-controls="add-vehicle-panel"
+                className="mt-2 w-full sm:mt-0 sm:w-auto"
+                type="button"
+                variant={isAddVehicleOpen ? "outline" : "default"}
+                onClick={() =>
+                  setIsAddVehicleOpen((currentOpen) => !currentOpen)
+                }
+              >
+                {isAddVehicleOpen ? (
+                  <>
+                    <ChevronDown className="rotate-180" />
+                    Hide form
+                  </>
+                ) : (
+                  <>
+                    <PlusCircle />
+                    Add vehicle
+                  </>
+                )}
+              </Button>
             </div>
           </CardHeader>
-          <CardContent className="pt-4">
-            <form className="grid gap-4" noValidate onSubmit={handleAddVehicle}>
+          {isAddVehicleOpen || successMessage || formError ? (
+            <CardContent
+              className={isAddVehicleOpen ? "pt-4" : "pt-0"}
+              id="add-vehicle-panel"
+            >
+              <div className="grid gap-4">
               {successMessage ? (
                 <Alert className="border-emerald-200 bg-emerald-50 text-emerald-950">
                   <CheckCircle2 />
@@ -307,6 +363,8 @@ function AdminInventoryPage() {
                 </Alert>
               ) : null}
 
+              {isAddVehicleOpen ? (
+                <form className="grid gap-4" noValidate onSubmit={handleAddVehicle}>
               <div className="grid gap-3 md:grid-cols-3">
                 <FormField label="Make" htmlFor="vehicle-make">
                   <Input
@@ -546,8 +604,11 @@ function AdminInventoryPage() {
                     : "Add vehicle"}
                 </Button>
               </div>
-            </form>
-          </CardContent>
+                </form>
+              ) : null}
+              </div>
+            </CardContent>
+          ) : null}
         </Card>
 
         <Card className="rounded-lg shadow-sm">
