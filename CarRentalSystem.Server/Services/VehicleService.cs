@@ -135,6 +135,92 @@ public class VehicleService : IVehicleService
             .ToList();
     }
 
+    public async Task<PaginatedResult<VehicleDto>> GetAdminInventoryAsync(AdminVehicleQueryParams query)
+    {
+        var page = Math.Max(query.Page, 1);
+        var pageSize = Math.Clamp(query.PageSize, 1, MaxPageSize);
+        var vehiclesQuery = _dbContext.Vehicles.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim().ToLower();
+            var hasYearSearch = int.TryParse(search, out var yearSearch);
+            var hasCategorySearch = Enum.TryParse<VehicleCategory>(search, true, out var categorySearch);
+            var hasStatusSearch = Enum.TryParse<VehicleStatus>(search, true, out var statusSearch);
+
+            vehiclesQuery = vehiclesQuery.Where(v =>
+                v.Make.ToLower().Contains(search) ||
+                v.Model.ToLower().Contains(search) ||
+                v.LicensePlate.ToLower().Contains(search) ||
+                v.Transmission.ToLower().Contains(search) ||
+                v.FuelType.ToLower().Contains(search) ||
+                (hasYearSearch && v.Year == yearSearch) ||
+                (hasCategorySearch && v.Category == categorySearch) ||
+                (hasStatusSearch && v.VehicleStatus == statusSearch));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Category) &&
+            !string.Equals(query.Category, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            vehiclesQuery = vehiclesQuery.Where(v => v.Category == ParseCategory(query.Category));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Status) &&
+            !string.Equals(query.Status, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            vehiclesQuery = vehiclesQuery.Where(v => v.VehicleStatus == ParseStatus(query.Status));
+        }
+
+        var totalCount = await vehiclesQuery.CountAsync();
+        var orderedQuery = ApplyAdminInventorySort(vehiclesQuery, query.SortBy, query.SortDirection);
+        var vehicles = await orderedQuery
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PaginatedResult<VehicleDto>
+        {
+            Items = vehicles.Select(MapToDto).ToList(),
+            NextCursor = null,
+            HasMore = page * pageSize < totalCount,
+            TotalCount = totalCount,
+        };
+    }
+
+    private static IOrderedQueryable<Vehicle> ApplyAdminInventorySort(
+        IQueryable<Vehicle> query,
+        string? sortBy,
+        string? sortDirection)
+    {
+        var descending = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+
+        return (sortBy ?? "vehicle").Trim().ToLowerInvariant() switch
+        {
+            "category" => descending
+                ? query.OrderByDescending(v => v.Category).ThenBy(v => v.Make).ThenBy(v => v.Model).ThenBy(v => v.Id)
+                : query.OrderBy(v => v.Category).ThenBy(v => v.Make).ThenBy(v => v.Model).ThenBy(v => v.Id),
+            "plate" => descending
+                ? query.OrderByDescending(v => v.LicensePlate).ThenBy(v => v.Make).ThenBy(v => v.Model).ThenBy(v => v.Id)
+                : query.OrderBy(v => v.LicensePlate).ThenBy(v => v.Make).ThenBy(v => v.Model).ThenBy(v => v.Id),
+            "status" => descending
+                ? query.OrderByDescending(v => v.VehicleStatus).ThenBy(v => v.Make).ThenBy(v => v.Model).ThenBy(v => v.Id)
+                : query.OrderBy(v => v.VehicleStatus).ThenBy(v => v.Make).ThenBy(v => v.Model).ThenBy(v => v.Id),
+            "mileage" => descending
+                ? query.OrderByDescending(v => v.Mileage).ThenBy(v => v.Id)
+                : query.OrderBy(v => v.Mileage).ThenBy(v => v.Id),
+            "rate" => descending
+                ? query.OrderByDescending(v => v.PricePerDay).ThenBy(v => v.Id)
+                : query.OrderBy(v => v.PricePerDay).ThenBy(v => v.Id),
+            "specs" => descending
+                ? query.OrderByDescending(v => v.Transmission).ThenByDescending(v => v.FuelType).ThenBy(v => v.Id)
+                : query.OrderBy(v => v.Transmission).ThenBy(v => v.FuelType).ThenBy(v => v.Id),
+            "vehicle" => descending
+                ? query.OrderByDescending(v => v.Make).ThenByDescending(v => v.Model).ThenByDescending(v => v.Year).ThenBy(v => v.Id)
+                : query.OrderBy(v => v.Make).ThenBy(v => v.Model).ThenBy(v => v.Year).ThenBy(v => v.Id),
+            _ => throw new ArgumentException($"Invalid inventory sort field '{sortBy}'."),
+        };
+    }
+
     public async Task<VehicleDto> CreateAsync(VehicleUpsertDto dto)
     {
         var vehicle = new Vehicle

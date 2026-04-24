@@ -92,6 +92,28 @@ public class VehicleController : ControllerBase
     }
 
     /// <summary>
+    /// Get a paginated admin inventory view.
+    /// </summary>
+    [HttpGet("admin/inventory")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<PaginatedResult<VehicleDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAdminInventory([FromQuery] AdminVehicleQueryParams query)
+    {
+        try
+        {
+            var result = await _vehicleService.GetAdminInventoryAsync(query);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Create a new vehicle in the inventory.
     /// </summary>
     [HttpPost]

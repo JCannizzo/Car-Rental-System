@@ -17,27 +17,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { VEHICLE_CATEGORIES, type Vehicle } from "@/lib/api";
+import {
+  VEHICLE_CATEGORIES,
+  type AdminVehicleSortBy,
+  type SortDirection,
+  type Vehicle,
+  type VehicleCategory,
+} from "@/lib/api";
 import {
   type ColumnDef,
-  type ColumnFiltersState,
-  type SortingState,
   flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import {
-  ArrowUpDown,
-  Car,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  Search,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowUpDown, Car, ChevronLeft, ChevronRight, Eye, Search } from "lucide-react";
+import { useMemo } from "react";
 
 const STATUS_FILTERS = ["Available", "Rented", "Maintenance", "Retired"];
 
@@ -53,153 +47,241 @@ type VehicleColumn = Vehicle & {
   vehicleLabel: string;
 };
 
-function sortableHeader(label: string) {
-  return ({ column }: { column: { getIsSorted: () => false | "asc" | "desc"; toggleSorting: (desc?: boolean) => void } }) => (
+interface InventoryDataTableProps {
+  vehicles: Vehicle[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+  search: string;
+  category: VehicleCategory | "all";
+  status: string;
+  sortBy: AdminVehicleSortBy;
+  sortDirection: SortDirection;
+  onSearchChange: (search: string) => void;
+  onCategoryChange: (category: VehicleCategory | "all") => void;
+  onStatusChange: (status: string) => void;
+  onPageChange: (page: number) => void;
+  onSortChange: (sortBy: AdminVehicleSortBy) => void;
+}
+
+function SortButton({
+  label,
+  sortKey,
+  activeSort,
+  direction,
+  className,
+  onSortChange,
+}: {
+  label: string;
+  sortKey: AdminVehicleSortBy;
+  activeSort: AdminVehicleSortBy;
+  direction: SortDirection;
+  className?: string;
+  onSortChange: (sortBy: AdminVehicleSortBy) => void;
+}) {
+  const isActive = activeSort === sortKey;
+
+  return (
     <Button
-      className="-ml-2"
+      className={className}
       variant="ghost"
-      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      onClick={() => onSortChange(sortKey)}
     >
       {label}
-      <ArrowUpDown className="h-3.5 w-3.5" />
+      <ArrowUpDown
+        className={
+          isActive && direction === "desc"
+            ? "h-3.5 w-3.5 rotate-180"
+            : "h-3.5 w-3.5"
+        }
+      />
     </Button>
   );
 }
 
-const columns: ColumnDef<VehicleColumn>[] = [
-  {
-    accessorKey: "vehicleLabel",
-    header: sortableHeader("Vehicle"),
-    cell: ({ row }) => {
-      const vehicle = row.original;
-      const imageUrl = vehicle.imageUrlFront || vehicle.imageUrl;
+function getColumns({
+  onSortChange,
+  sortBy,
+  sortDirection,
+}: Pick<
+  InventoryDataTableProps,
+  "onSortChange" | "sortBy" | "sortDirection"
+>): ColumnDef<VehicleColumn>[] {
+  return [
+    {
+      accessorKey: "vehicleLabel",
+      header: () => (
+        <SortButton
+          activeSort={sortBy}
+          className="-ml-2"
+          direction={sortDirection}
+          label="Vehicle"
+          sortKey="vehicle"
+          onSortChange={onSortChange}
+        />
+      ),
+      cell: ({ row }) => {
+        const vehicle = row.original;
+        const imageUrl = vehicle.imageUrlFront || vehicle.imageUrl;
 
-      return (
-        <div className="flex min-w-[240px] items-center gap-3">
-          {imageUrl ? (
-            <img
-              alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-              className="h-12 w-16 rounded-md border object-cover"
-              src={imageUrl}
-            />
-          ) : (
-            <div className="grid h-12 w-16 place-items-center rounded-md border bg-muted">
-              <Car className="h-5 w-5 text-muted-foreground" />
+        return (
+          <div className="flex min-w-[240px] items-center gap-3">
+            {imageUrl ? (
+              <img
+                alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                className="h-12 w-16 rounded-md border object-cover"
+                src={imageUrl}
+              />
+            ) : (
+              <div className="grid h-12 w-16 place-items-center rounded-md border bg-muted">
+                <Car className="h-5 w-5 text-muted-foreground" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="truncate font-medium">
+                {vehicle.make} {vehicle.model}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {vehicle.year} · {vehicle.seats} seats · {vehicle.doors} doors
+              </p>
             </div>
-          )}
-          <div className="min-w-0">
-            <p className="truncate font-medium">
-              {vehicle.make} {vehicle.model}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {vehicle.year} · {vehicle.seats} seats · {vehicle.doors} doors
-            </p>
           </div>
+        );
+      },
+    },
+    {
+      accessorKey: "category",
+      header: () => (
+        <SortButton
+          activeSort={sortBy}
+          className="-ml-2"
+          direction={sortDirection}
+          label="Category"
+          sortKey="category"
+          onSortChange={onSortChange}
+        />
+      ),
+      cell: ({ row }) => (
+        <Badge variant="outline">{row.getValue("category")}</Badge>
+      ),
+    },
+    {
+      accessorKey: "licensePlate",
+      header: () => (
+        <SortButton
+          activeSort={sortBy}
+          className="-ml-2"
+          direction={sortDirection}
+          label="Plate"
+          sortKey="plate"
+          onSortChange={onSortChange}
+        />
+      ),
+      cell: ({ row }) => row.getValue("licensePlate") || "Unassigned",
+    },
+    {
+      accessorKey: "status",
+      header: () => (
+        <SortButton
+          activeSort={sortBy}
+          className="-ml-2"
+          direction={sortDirection}
+          label="Status"
+          sortKey="status"
+          onSortChange={onSortChange}
+        />
+      ),
+      cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+    },
+    {
+      accessorKey: "mileage",
+      header: () => (
+        <SortButton
+          activeSort={sortBy}
+          className="-ml-2"
+          direction={sortDirection}
+          label="Mileage"
+          sortKey="mileage"
+          onSortChange={onSortChange}
+        />
+      ),
+      cell: ({ row }) => (
+        <span>{numberFormatter.format(row.getValue("mileage"))} mi</span>
+      ),
+    },
+    {
+      accessorKey: "pricePerDay",
+      header: () => (
+        <div className="text-right">
+          <SortButton
+            activeSort={sortBy}
+            className="-mr-2"
+            direction={sortDirection}
+            label="Daily rate"
+            sortKey="rate"
+            onSortChange={onSortChange}
+          />
         </div>
-      );
+      ),
+      cell: ({ row }) => (
+        <div className="text-right font-medium">
+          {currencyFormatter.format(row.getValue("pricePerDay"))}
+        </div>
+      ),
     },
-    filterFn: (row, _columnId, filterValue) => {
-      const query = String(filterValue).toLowerCase().trim();
-
-      if (!query) {
-        return true;
-      }
-
-      const vehicle = row.original;
-      return [
-        vehicle.make,
-        vehicle.model,
-        vehicle.year,
-        vehicle.category,
-        vehicle.licensePlate,
-        vehicle.status,
-        vehicle.transmission,
-        vehicle.fuelType,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query);
+    {
+      id: "specs",
+      header: () => (
+        <SortButton
+          activeSort={sortBy}
+          className="-ml-2"
+          direction={sortDirection}
+          label="Specs"
+          sortKey="specs"
+          onSortChange={onSortChange}
+        />
+      ),
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          {row.original.transmission} · {row.original.fuelType}
+        </span>
+      ),
     },
-  },
-  {
-    accessorKey: "category",
-    header: "Category",
-    cell: ({ row }) => (
-      <Badge variant="outline">{row.getValue("category")}</Badge>
-    ),
-    filterFn: (row, columnId, filterValue) =>
-      filterValue === "all" || row.getValue(columnId) === filterValue,
-  },
-  {
-    accessorKey: "licensePlate",
-    header: "Plate",
-    cell: ({ row }) => row.getValue("licensePlate") || "Unassigned",
-  },
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
-    filterFn: (row, columnId, filterValue) =>
-      filterValue === "all" ||
-      String(row.getValue(columnId)).toLowerCase() ===
-        String(filterValue).toLowerCase(),
-  },
-  {
-    accessorKey: "mileage",
-    header: sortableHeader("Mileage"),
-    cell: ({ row }) => (
-      <span>{numberFormatter.format(row.getValue("mileage"))} mi</span>
-    ),
-  },
-  {
-    accessorKey: "pricePerDay",
-    header: ({ column }) => (
-      <div className="text-right">
-        <Button
-          className="-mr-2"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Daily rate
-          <ArrowUpDown className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="text-right font-medium">
-        {currencyFormatter.format(row.getValue("pricePerDay"))}
-      </div>
-    ),
-  },
-  {
-    id: "specs",
-    header: "Specs",
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.transmission} · {row.original.fuelType}
-      </span>
-    ),
-  },
-  {
-    id: "actions",
-    cell: ({ row }) => (
-      <div className="flex justify-end">
-        <Button
-          aria-label={`View ${row.original.make} ${row.original.model}`}
-          size="icon-sm"
-          variant="ghost"
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
-      </div>
-    ),
-  },
-];
+    {
+      id: "actions",
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <Button
+            aria-label={`View ${row.original.make} ${row.original.model}`}
+            size="icon-sm"
+            variant="ghost"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+}
 
-export function InventoryDataTable({ vehicles }: { vehicles: Vehicle[] }) {
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+export function InventoryDataTable({
+  vehicles,
+  totalCount,
+  page,
+  pageSize,
+  hasMore,
+  search,
+  category,
+  status,
+  sortBy,
+  sortDirection,
+  onSearchChange,
+  onCategoryChange,
+  onStatusChange,
+  onPageChange,
+  onSortChange,
+}: InventoryDataTableProps) {
   const data = useMemo(
     () =>
       vehicles.map((vehicle) => ({
@@ -208,28 +290,18 @@ export function InventoryDataTable({ vehicles }: { vehicles: Vehicle[] }) {
       })),
     [vehicles],
   );
-
+  const columns = useMemo(
+    () => getColumns({ onSortChange, sortBy, sortDirection }),
+    [onSortChange, sortBy, sortDirection],
+  );
   const table = useReactTable({
     columns,
     data,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    onColumnFiltersChange: setColumnFilters,
-    onSortingChange: setSorting,
-    state: {
-      columnFilters,
-      sorting,
-    },
   });
-
-  const vehicleSearch =
-    (table.getColumn("vehicleLabel")?.getFilterValue() as string) ?? "";
-  const statusFilter =
-    (table.getColumn("status")?.getFilterValue() as string) ?? "all";
-  const categoryFilter =
-    (table.getColumn("category")?.getFilterValue() as string) ?? "all";
+  const totalPages = Math.max(Math.ceil(totalCount / pageSize), 1);
+  const firstItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+  const lastItem = Math.min(page * pageSize, totalCount);
 
   return (
     <div className="grid gap-4">
@@ -239,22 +311,13 @@ export function InventoryDataTable({ vehicles }: { vehicles: Vehicle[] }) {
           <Input
             className="pl-8"
             placeholder="Search make, model, plate, status..."
-            value={vehicleSearch}
-            onChange={(event) =>
-              table
-                .getColumn("vehicleLabel")
-                ?.setFilterValue(event.target.value)
-            }
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
           />
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Select
-            value={statusFilter}
-            onValueChange={(value) =>
-              table.getColumn("status")?.setFilterValue(value)
-            }
-          >
+          <Select value={status} onValueChange={onStatusChange}>
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -269,9 +332,9 @@ export function InventoryDataTable({ vehicles }: { vehicles: Vehicle[] }) {
           </Select>
 
           <Select
-            value={categoryFilter}
+            value={category}
             onValueChange={(value) =>
-              table.getColumn("category")?.setFilterValue(value)
+              onCategoryChange(value as VehicleCategory | "all")
             }
           >
             <SelectTrigger className="w-full sm:w-40">
@@ -327,7 +390,7 @@ export function InventoryDataTable({ vehicles }: { vehicles: Vehicle[] }) {
                   className="h-28 text-center text-muted-foreground"
                   colSpan={columns.length}
                 >
-                  No vehicles match the current filters.
+                  No vehicles match the current query.
                 </TableCell>
               </TableRow>
             )}
@@ -337,15 +400,15 @@ export function InventoryDataTable({ vehicles }: { vehicles: Vehicle[] }) {
 
       <div className="flex flex-col gap-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <p>
-          Showing {table.getRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} filtered vehicles
+          Showing {firstItem}-{lastItem} of {totalCount} vehicles · Page {page}{" "}
+          of {totalPages}
         </p>
         <div className="flex items-center gap-2">
           <Button
             size="sm"
             variant="outline"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
+            onClick={() => onPageChange(page - 1)}
+            disabled={page <= 1}
           >
             <ChevronLeft />
             Previous
@@ -353,8 +416,8 @@ export function InventoryDataTable({ vehicles }: { vehicles: Vehicle[] }) {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            onClick={() => onPageChange(page + 1)}
+            disabled={!hasMore}
           >
             Next
             <ChevronRight />

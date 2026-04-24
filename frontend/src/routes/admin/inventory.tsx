@@ -12,9 +12,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { fetchAdminVehicles } from "@/lib/api";
+import {
+  fetchAdminVehicleInventory,
+  type AdminVehicleSortBy,
+  type SortDirection,
+  type VehicleCategory,
+} from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useState } from "react";
+
+const PAGE_SIZE = 15;
 
 export const Route = createFileRoute("/admin/inventory")({
   component: AdminInventoryPage,
@@ -22,11 +30,61 @@ export const Route = createFileRoute("/admin/inventory")({
 
 function AdminInventoryPage() {
   const { auth, isAdmin, isAllowed } = useAdminAccess("/admin/inventory");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<VehicleCategory | "all">("all");
+  const [status, setStatus] = useState("all");
+  const [sortBy, setSortBy] = useState<AdminVehicleSortBy>("vehicle");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    setPage(1);
+  }, []);
+
+  const handleCategoryChange = useCallback((value: VehicleCategory | "all") => {
+    setCategory(value);
+    setPage(1);
+  }, []);
+
+  const handleStatusChange = useCallback((value: string) => {
+    setStatus(value);
+    setPage(1);
+  }, []);
+
+  const handleSortChange = useCallback(
+    (nextSortBy: AdminVehicleSortBy) => {
+      setSortDirection((currentDirection) =>
+        sortBy === nextSortBy && currentDirection === "asc" ? "desc" : "asc",
+      );
+      setSortBy(nextSortBy);
+      setPage(1);
+    },
+    [sortBy],
+  );
 
   const { data, error, isError, isLoading } = useQuery({
     enabled: auth.isReady && auth.isAuthenticated && isAdmin,
-    queryFn: fetchAdminVehicles,
-    queryKey: ["admin-vehicles"],
+    queryFn: () =>
+      fetchAdminVehicleInventory({
+        category,
+        page,
+        pageSize: PAGE_SIZE,
+        search,
+        sortBy,
+        sortDirection,
+        status,
+      }),
+    queryKey: [
+      "admin-vehicle-inventory",
+      page,
+      PAGE_SIZE,
+      search,
+      category,
+      status,
+      sortBy,
+      sortDirection,
+    ],
     retry: false,
   });
 
@@ -38,7 +96,7 @@ function AdminInventoryPage() {
     return <AdminErrorState error={error} title="Unable To Load Inventory" />;
   }
 
-  const vehicles = data ?? [];
+  const vehicles = data?.items ?? [];
 
   return (
     <AdminShell title="Inventory">
@@ -53,12 +111,28 @@ function AdminInventoryPage() {
                 </CardDescription>
               </div>
               <p className="text-sm font-medium text-muted-foreground">
-                {vehicles.length} vehicles
+                {data?.totalCount ?? 0} vehicles
               </p>
             </div>
           </CardHeader>
           <CardContent className="pt-4">
-            <InventoryDataTable vehicles={vehicles} />
+            <InventoryDataTable
+              category={category}
+              hasMore={data?.hasMore ?? false}
+              page={page}
+              pageSize={PAGE_SIZE}
+              search={search}
+              sortBy={sortBy}
+              sortDirection={sortDirection}
+              status={status}
+              totalCount={data?.totalCount ?? 0}
+              vehicles={vehicles}
+              onCategoryChange={handleCategoryChange}
+              onPageChange={setPage}
+              onSearchChange={handleSearchChange}
+              onSortChange={handleSortChange}
+              onStatusChange={handleStatusChange}
+            />
           </CardContent>
         </Card>
       </section>

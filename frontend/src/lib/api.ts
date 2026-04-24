@@ -26,6 +26,27 @@ export interface PaginatedResult<T> {
   totalCount: number;
 }
 
+export type AdminVehicleSortBy =
+  | "vehicle"
+  | "category"
+  | "plate"
+  | "status"
+  | "mileage"
+  | "rate"
+  | "specs";
+
+export type SortDirection = "asc" | "desc";
+
+export interface AdminVehicleQueryParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  category?: VehicleCategory | "all";
+  status?: string;
+  sortBy?: AdminVehicleSortBy;
+  sortDirection?: SortDirection;
+}
+
 export const VEHICLE_CATEGORIES = [
   "Economy",
   "Sedan",
@@ -250,6 +271,36 @@ export async function fetchAdminVehicles(): Promise<Vehicle[]> {
 
   if (!response.ok) {
     throw await readApiError(response, "Failed to fetch admin vehicles");
+  }
+
+  return response.json();
+}
+
+export async function fetchAdminVehicleInventory(
+  params: AdminVehicleQueryParams = {},
+): Promise<PaginatedResult<Vehicle>> {
+  const searchParams = new URLSearchParams();
+
+  searchParams.set("Page", String(params.page ?? 1));
+  searchParams.set("PageSize", String(params.pageSize ?? 15));
+  if (params.search?.trim()) searchParams.set("Search", params.search.trim());
+  if (params.category && params.category !== "all") {
+    searchParams.set("Category", params.category);
+  }
+  if (params.status && params.status !== "all") {
+    searchParams.set("Status", params.status);
+  }
+  if (params.sortBy) searchParams.set("SortBy", params.sortBy);
+  if (params.sortDirection) {
+    searchParams.set("SortDirection", params.sortDirection);
+  }
+
+  const response = await apiFetch(
+    `/api/Vehicle/admin/inventory?${searchParams.toString()}`,
+  );
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch inventory vehicles");
   }
 
   return response.json();
