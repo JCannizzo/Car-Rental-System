@@ -7,6 +7,7 @@ public interface IVehicleService
 {
     Task<VehicleDto?> GetVehicleAsync(Guid id);
     Task<PaginatedResult<VehicleDto>> GetAvailableAsync(VehicleQueryParams query);
+    Task<PaginatedResult<VehicleDto>> GetAdminInventoryAsync(AdminVehicleQueryParams query);
 
     Task<List<VehicleDto>> GetAllAsync();
     Task<VehicleDto> CreateAsync(VehicleUpsertDto dto);

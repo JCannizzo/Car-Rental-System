@@ -15,6 +15,8 @@ export interface Vehicle {
   features: string[];
   imageUrl: string;
   imageUrlFront: string;
+  licensePlate?: string;
+  status?: string;
 }
 
 export interface PaginatedResult<T> {
@@ -22,6 +24,45 @@ export interface PaginatedResult<T> {
   nextCursor: string | null;
   hasMore: boolean;
   totalCount: number;
+}
+
+export type AdminVehicleSortBy =
+  | "vehicle"
+  | "category"
+  | "plate"
+  | "status"
+  | "mileage"
+  | "rate"
+  | "specs";
+
+export type SortDirection = "asc" | "desc";
+
+export interface AdminVehicleQueryParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  category?: VehicleCategory | "all";
+  status?: string;
+  sortBy?: AdminVehicleSortBy;
+  sortDirection?: SortDirection;
+}
+
+export interface VehicleUpsertRequest {
+  make: string;
+  model: string;
+  year: number;
+  category: VehicleCategory;
+  transmission: string;
+  fuelType: string;
+  seats: number;
+  doors: number;
+  pricePerDay: number;
+  mileage: number;
+  features: string[];
+  imageUrl: string;
+  imageUrlFront: string;
+  licensePlate: string;
+  status: string;
 }
 
 export const VEHICLE_CATEGORIES = [
@@ -241,4 +282,85 @@ export async function fetchVehicles(
     throw await readApiError(response, "Failed to fetch vehicles");
   }
   return response.json();
+}
+
+export async function fetchAdminVehicles(): Promise<Vehicle[]> {
+  const response = await apiFetch("/api/Vehicle/admin");
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch admin vehicles");
+  }
+
+  return response.json();
+}
+
+export async function fetchAdminVehicleInventory(
+  params: AdminVehicleQueryParams = {},
+): Promise<PaginatedResult<Vehicle>> {
+  const searchParams = new URLSearchParams();
+
+  searchParams.set("Page", String(params.page ?? 1));
+  searchParams.set("PageSize", String(params.pageSize ?? 15));
+  if (params.search?.trim()) searchParams.set("Search", params.search.trim());
+  if (params.category && params.category !== "all") {
+    searchParams.set("Category", params.category);
+  }
+  if (params.status && params.status !== "all") {
+    searchParams.set("Status", params.status);
+  }
+  if (params.sortBy) searchParams.set("SortBy", params.sortBy);
+  if (params.sortDirection) {
+    searchParams.set("SortDirection", params.sortDirection);
+  }
+
+  const response = await apiFetch(
+    `/api/Vehicle/admin/inventory?${searchParams.toString()}`,
+  );
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch inventory vehicles");
+  }
+
+  return response.json();
+}
+
+export async function createVehicle(
+  data: VehicleUpsertRequest,
+): Promise<Vehicle> {
+  const response = await apiFetch("/api/Vehicle", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to add vehicle");
+  }
+
+  return response.json();
+}
+
+export async function updateVehicle(
+  id: string,
+  data: VehicleUpsertRequest,
+): Promise<Vehicle> {
+  const response = await apiFetch(`/api/Vehicle/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to update vehicle");
+  }
+
+  return response.json();
+}
+
+export async function deleteVehicle(id: string): Promise<void> {
+  const response = await apiFetch(`/api/Vehicle/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to delete vehicle");
+  }
 }
