@@ -168,14 +168,6 @@ export function AdminShell({
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <AdminNav className="flex gap-2 overflow-x-auto lg:hidden" compact />
                 <div className="flex gap-2">
-                  <Button variant="outline">
-                    <Download />
-                    Export
-                  </Button>
-                  <Button>
-                    <Plus />
-                    Add vehicle
-                  </Button>
                   <Button
                     className="lg:hidden"
                     variant="outline"
