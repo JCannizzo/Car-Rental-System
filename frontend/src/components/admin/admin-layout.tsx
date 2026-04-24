@@ -15,10 +15,8 @@ import {
   BarChart3,
   CalendarClock,
   ClipboardList,
-  Download,
   Loader2,
   LogOut,
-  Plus,
   RotateCcw,
 } from "lucide-react";
 import { useEffect } from "react";

@@ -4,7 +4,6 @@ import {
   AdminShell,
   useAdminAccess,
 } from "@/components/admin/admin-layout";
-import { InventoryDataTable } from "@/components/admin/inventory-data-table";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +13,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,243 +37,221 @@ import {
   FUEL_TYPES,
   TRANSMISSION_TYPES,
   VEHICLE_CATEGORIES,
-  createVehicle,
-  fetchAdminVehicleInventory,
-  type AdminVehicleSortBy,
-  type SortDirection,
-  type VehicleCategory,
+  deleteVehicle,
+  fetchVehicle,
+  updateVehicle,
 } from "@/lib/api";
 import {
   VEHICLE_STATUSES,
+  createVehicleFormState,
   createVehicleUpsertPayload,
   initialVehicleForm,
   type VehicleFormState,
 } from "@/lib/vehicle-form";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  keepPreviousData,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
-import { Outlet, createFileRoute, useLocation } from "@tanstack/react-router";
-import { CheckCircle2, ChevronDown, PlusCircle, XCircle } from "lucide-react";
-import {
-  type FormEvent,
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+  ArrowLeft,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
+  Save,
+  Trash2,
+  XCircle,
+} from "lucide-react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 
-const PAGE_SIZE = 15;
-const SEARCH_DEBOUNCE_MS = 350;
-
-function useDebouncedValue<T>(value: T, delay: number) {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-export const Route = createFileRoute("/admin/inventory")({
-  component: AdminInventoryPage,
+export const Route = createFileRoute("/admin/inventory/$vehicleId")({
+  component: EditVehiclePage,
 });
 
-function AdminInventoryPage() {
-  const location = useLocation();
-  const { auth, isAdmin, isAllowed } = useAdminAccess("/admin/inventory");
+function EditVehiclePage() {
+  const { vehicleId } = Route.useParams();
+  const { auth, isAdmin, isAllowed } = useAdminAccess(
+    `/admin/inventory/${vehicleId}`,
+  );
   const queryClient = useQueryClient();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<VehicleCategory | "all">("all");
-  const [status, setStatus] = useState("all");
-  const [sortBy, setSortBy] = useState<AdminVehicleSortBy>("vehicle");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
-  const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
+  const navigate = Route.useNavigate();
   const [vehicleForm, setVehicleForm] =
     useState<VehicleFormState>(initialVehicleForm);
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const isInventoryIndex = location.pathname === "/admin/inventory";
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteError, setDeleteError] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const handleSearchChange = useCallback((value: string) => {
-    setSearch(value);
-    setPage(1);
-  }, []);
+  const {
+    data: vehicle,
+    error,
+    isError,
+    isLoading,
+  } = useQuery({
+    enabled: auth.isReady && auth.isAuthenticated && isAdmin,
+    queryKey: ["vehicle", vehicleId],
+    queryFn: () => fetchVehicle(vehicleId),
+    retry: false,
+  });
 
-  const handleCategoryChange = useCallback((value: VehicleCategory | "all") => {
-    setCategory(value);
-    setPage(1);
-  }, []);
+  useEffect(() => {
+    if (!vehicle) {
+      return;
+    }
 
-  const handleStatusChange = useCallback((value: string) => {
-    setStatus(value);
-    setPage(1);
-  }, []);
+    setVehicleForm(createVehicleFormState(vehicle));
+  }, [vehicle]);
 
-  const handleSortChange = useCallback(
-    (nextSortBy: AdminVehicleSortBy) => {
-      setSortDirection((currentDirection) =>
-        sortBy === nextSortBy && currentDirection === "asc" ? "desc" : "asc",
-      );
-      setSortBy(nextSortBy);
-      setPage(1);
-    },
-    [sortBy],
-  );
-
-  const updateVehicleForm = useCallback(
-    (field: keyof VehicleFormState, value: string) => {
-      setVehicleForm((currentForm) => ({ ...currentForm, [field]: value }));
-      setFormError("");
-      setSuccessMessage("");
-    },
-    [],
-  );
-
-  const createVehicleMutation = useMutation({
-    mutationFn: createVehicle,
+  const updateVehicleMutation = useMutation({
+    mutationFn: (payload: Parameters<typeof updateVehicle>[1]) =>
+      updateVehicle(vehicleId, payload),
     onError: (error) => {
       const message =
         error instanceof ApiError
           ? error.message
-          : "Unable to add vehicle. Please check the details and try again.";
+          : "Unable to update vehicle. Please check the details and try again.";
 
       setSuccessMessage("");
       setFormError(message);
     },
-    onSuccess: async (vehicle) => {
-      setVehicleForm(initialVehicleForm);
+    onSuccess: async (updatedVehicle) => {
+      setVehicleForm(createVehicleFormState(updatedVehicle));
       setFormError("");
       setSuccessMessage(
-        `${vehicle.year} ${vehicle.make} ${vehicle.model} was added to inventory.`,
+        `${updatedVehicle.year} ${updatedVehicle.make} ${updatedVehicle.model} was updated.`,
       );
-      setPage(1);
-      setSearch("");
-      setCategory("all");
-      setStatus("all");
-      setSortBy("vehicle");
-      setSortDirection("asc");
-      setIsAddVehicleOpen(false);
-      await queryClient.invalidateQueries({
-        queryKey: ["admin-vehicle-inventory"],
-      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["vehicle", vehicleId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["admin-vehicle-inventory"],
+        }),
+      ]);
     },
   });
 
-  const handleAddVehicle = useCallback(
-    (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
+  const deleteVehicleMutation = useMutation({
+    mutationFn: () => deleteVehicle(vehicleId),
+    onError: (error) => {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Unable to delete vehicle. Please try again.";
 
-      const result = createVehicleUpsertPayload(vehicleForm);
+      setDeleteError(message);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.removeQueries({ queryKey: ["vehicle", vehicleId] }),
+        queryClient.invalidateQueries({
+          queryKey: ["admin-vehicle-inventory"],
+        }),
+      ]);
+      void navigate({ to: "/admin/inventory" });
+    },
+  });
 
-      if (result.payload === null) {
-        setSuccessMessage("");
-        setFormError(result.error);
-        return;
-      }
+  const updateVehicleForm = (field: keyof VehicleFormState, value: string) => {
+    setVehicleForm((currentForm) => ({ ...currentForm, [field]: value }));
+    setFormError("");
+    setSuccessMessage("");
+  };
 
-      setFormError("");
+  const handleUpdateVehicle = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const result = createVehicleUpsertPayload(vehicleForm);
+
+    if (result.payload === null) {
       setSuccessMessage("");
-      createVehicleMutation.mutate(result.payload);
-    },
-    [createVehicleMutation, vehicleForm],
-  );
+      setFormError(result.error);
+      return;
+    }
 
-  const { data, error, isError, isLoading } = useQuery({
-    enabled: isInventoryIndex && auth.isReady && auth.isAuthenticated && isAdmin,
-    queryFn: () =>
-      fetchAdminVehicleInventory({
-        category,
-        page,
-        pageSize: PAGE_SIZE,
-        search: debouncedSearch,
-        sortBy,
-        sortDirection,
-        status,
-      }),
-    queryKey: [
-      "admin-vehicle-inventory",
-      page,
-      PAGE_SIZE,
-      debouncedSearch,
-      category,
-      status,
-      sortBy,
-      sortDirection,
-    ],
-    placeholderData: keepPreviousData,
-    retry: false,
-  });
+    setFormError("");
+    setSuccessMessage("");
+    updateVehicleMutation.mutate(result.payload);
+  };
 
-  if (!isInventoryIndex) {
-    return <Outlet />;
-  }
+  const expectedLicensePlate = vehicle?.licensePlate ?? "";
+  const canDeleteVehicle =
+    expectedLicensePlate.length > 0 &&
+    deleteConfirmation.trim() === expectedLicensePlate &&
+    !deleteVehicleMutation.isPending;
+
+  const handleDeleteVehicle = () => {
+    if (!vehicle) {
+      return;
+    }
+
+    if (deleteConfirmation.trim() !== expectedLicensePlate) {
+      setDeleteError("Type the vehicle license plate exactly to delete it.");
+      return;
+    }
+
+    setDeleteError("");
+    deleteVehicleMutation.mutate();
+  };
+
+  const handleDeleteDialogOpenChange = (open: boolean) => {
+    setIsDeleteDialogOpen(open);
+
+    if (!open) {
+      setDeleteConfirmation("");
+      setDeleteError("");
+    }
+  };
 
   if (!isAllowed || isLoading) {
     return <AdminLoadingState />;
   }
 
   if (isError) {
-    return <AdminErrorState error={error} title="Unable To Load Inventory" />;
+    return <AdminErrorState error={error} title="Unable To Load Vehicle" />;
   }
 
-  const vehicles = data?.items ?? [];
+  if (!vehicle) {
+    return (
+      <AdminErrorState
+        error={new ApiError("Vehicle not found.", 404)}
+        title="Vehicle Not Found"
+      />
+    );
+  }
 
   return (
-    <AdminShell title="Inventory">
+    <AdminShell title="Edit Vehicle">
       <section className="grid gap-5 p-4 lg:p-7">
-        <Card className="rounded-lg shadow-sm" size="sm">
-          <CardHeader className={isAddVehicleOpen ? "border-b" : undefined}>
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle>Add Vehicle</CardTitle>
-                <CardDescription>
-                  Create a new fleet record for the admin inventory.
-                </CardDescription>
-              </div>
-              <Button
-                aria-expanded={isAddVehicleOpen}
-                aria-controls="add-vehicle-panel"
-                className="mt-2 w-full sm:mt-0 sm:w-auto"
-                type="button"
-                variant={isAddVehicleOpen ? "outline" : "default"}
-                onClick={() =>
-                  setIsAddVehicleOpen((currentOpen) => !currentOpen)
-                }
-              >
-                {isAddVehicleOpen ? (
-                  <>
-                    <ChevronDown className="rotate-180" />
-                    Hide form
-                  </>
-                ) : (
-                  <>
-                    <PlusCircle />
-                    Add vehicle
-                  </>
-                )}
-              </Button>
-            </div>
-          </CardHeader>
-          {isAddVehicleOpen || successMessage || formError ? (
-            <CardContent
-              className={isAddVehicleOpen ? "pt-4" : "pt-0"}
-              id="add-vehicle-panel"
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button asChild variant="outline">
+            <Link to="/admin/inventory">
+              <ArrowLeft />
+              Back to inventory
+            </Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link
+              to="/vehicles/$vehicleId"
+              params={{ vehicleId: vehicle.id }}
             >
-              <div className="grid gap-4">
+              <ExternalLink />
+              View listing
+            </Link>
+          </Button>
+        </div>
+
+        <Card className="rounded-lg shadow-sm">
+          <CardHeader className="border-b">
+            <CardTitle>
+              {vehicle.year} {vehicle.make} {vehicle.model}
+            </CardTitle>
+            <CardDescription>
+              Update inventory details, pricing, status, images, and features.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <form className="grid gap-4" noValidate onSubmit={handleUpdateVehicle}>
               {successMessage ? (
                 <Alert className="border-emerald-200 bg-emerald-50 text-emerald-950">
                   <CheckCircle2 />
-                  <AlertTitle>Vehicle added</AlertTitle>
+                  <AlertTitle>Vehicle updated</AlertTitle>
                   <AlertDescription className="text-emerald-800">
                     {successMessage}
                   </AlertDescription>
@@ -274,13 +261,11 @@ function AdminInventoryPage() {
               {formError ? (
                 <Alert variant="destructive">
                   <XCircle />
-                  <AlertTitle>Vehicle could not be added</AlertTitle>
+                  <AlertTitle>Vehicle could not be updated</AlertTitle>
                   <AlertDescription>{formError}</AlertDescription>
                 </Alert>
               ) : null}
 
-              {isAddVehicleOpen ? (
-                <form className="grid gap-4" noValidate onSubmit={handleAddVehicle}>
               <div className="grid gap-3 md:grid-cols-3">
                 <FormField label="Make" htmlFor="vehicle-make">
                   <Input
@@ -289,7 +274,6 @@ function AdminInventoryPage() {
                     onChange={(event) =>
                       updateVehicleForm("make", event.target.value)
                     }
-                    placeholder="Toyota"
                     required
                   />
                 </FormField>
@@ -301,7 +285,6 @@ function AdminInventoryPage() {
                     onChange={(event) =>
                       updateVehicleForm("model", event.target.value)
                     }
-                    placeholder="Camry"
                     required
                   />
                 </FormField>
@@ -443,7 +426,6 @@ function AdminInventoryPage() {
                     onChange={(event) =>
                       updateVehicleForm("pricePerDay", event.target.value)
                     }
-                    placeholder="89"
                     required
                   />
                 </FormField>
@@ -468,7 +450,6 @@ function AdminInventoryPage() {
                     onChange={(event) =>
                       updateVehicleForm("licensePlate", event.target.value)
                     }
-                    placeholder="SED-009"
                     required
                   />
                 </FormField>
@@ -509,56 +490,93 @@ function AdminInventoryPage() {
                 </FormField>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Dialog
+                  open={isDeleteDialogOpen}
+                  onOpenChange={handleDeleteDialogOpenChange}
+                >
+                  <DialogTrigger asChild>
+                    <Button type="button" variant="destructive">
+                      <Trash2 />
+                      Delete vehicle
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete vehicle?</DialogTitle>
+                      <DialogDescription>
+                        This will permanently remove {vehicle.year}{" "}
+                        {vehicle.make} {vehicle.model} from inventory.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {deleteError ? (
+                      <Alert variant="destructive">
+                        <XCircle />
+                        <AlertTitle>Vehicle could not be deleted</AlertTitle>
+                        <AlertDescription>{deleteError}</AlertDescription>
+                      </Alert>
+                    ) : null}
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="delete-confirmation">
+                        Type {expectedLicensePlate} to confirm
+                      </Label>
+                      <Input
+                        id="delete-confirmation"
+                        autoComplete="off"
+                        value={deleteConfirmation}
+                        onChange={(event) => {
+                          setDeleteConfirmation(event.target.value);
+                          setDeleteError("");
+                        }}
+                      />
+                    </div>
+
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={deleteVehicleMutation.isPending}
+                        >
+                          Cancel
+                        </Button>
+                      </DialogClose>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        disabled={!canDeleteVehicle}
+                        onClick={handleDeleteVehicle}
+                      >
+                        {deleteVehicleMutation.isPending ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <Trash2 />
+                        )}
+                        {deleteVehicleMutation.isPending
+                          ? "Deleting vehicle..."
+                          : "Delete vehicle"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
                 <Button
                   type="submit"
-                  disabled={createVehicleMutation.isPending}
+                  disabled={updateVehicleMutation.isPending}
                 >
-                  <PlusCircle />
-                  {createVehicleMutation.isPending
-                    ? "Adding vehicle..."
-                    : "Add vehicle"}
+                  {updateVehicleMutation.isPending ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Save />
+                  )}
+                  {updateVehicleMutation.isPending
+                    ? "Saving vehicle..."
+                    : "Save changes"}
                 </Button>
               </div>
-                </form>
-              ) : null}
-              </div>
-            </CardContent>
-          ) : null}
-        </Card>
-
-        <Card className="rounded-lg shadow-sm">
-          <CardHeader className="border-b">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <CardTitle>Fleet Inventory</CardTitle>
-                <CardDescription>
-                  Search, sort, and filter vehicles across the rental fleet.
-                </CardDescription>
-              </div>
-              <p className="text-sm font-medium text-muted-foreground">
-                {data?.totalCount ?? 0} vehicles
-              </p>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <InventoryDataTable
-              category={category}
-              hasMore={data?.hasMore ?? false}
-              page={page}
-              pageSize={PAGE_SIZE}
-              search={search}
-              sortBy={sortBy}
-              sortDirection={sortDirection}
-              status={status}
-              totalCount={data?.totalCount ?? 0}
-              vehicles={vehicles}
-              onCategoryChange={handleCategoryChange}
-              onPageChange={setPage}
-              onSearchChange={handleSearchChange}
-              onSortChange={handleSortChange}
-              onStatusChange={handleStatusChange}
-            />
+            </form>
           </CardContent>
         </Card>
       </section>

@@ -338,3 +338,29 @@ export async function createVehicle(
 
   return response.json();
 }
+
+export async function updateVehicle(
+  id: string,
+  data: VehicleUpsertRequest,
+): Promise<Vehicle> {
+  const response = await apiFetch(`/api/Vehicle/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to update vehicle");
+  }
+
+  return response.json();
+}
+
+export async function deleteVehicle(id: string): Promise<void> {
+  const response = await apiFetch(`/api/Vehicle/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to delete vehicle");
+  }
+}

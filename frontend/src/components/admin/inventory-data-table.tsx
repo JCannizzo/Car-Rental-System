@@ -30,8 +30,16 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ArrowUpDown, Car, ChevronLeft, ChevronRight, Eye, Search } from "lucide-react";
-import { useMemo } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import {
+  ArrowUpDown,
+  Car,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Search,
+} from "lucide-react";
+import { useCallback, useMemo } from "react";
 
 const STATUS_FILTERS = ["Available", "Rented", "Maintenance", "Retired"];
 
@@ -126,7 +134,12 @@ function getColumns({
         const imageUrl = vehicle.imageUrlFront || vehicle.imageUrl;
 
         return (
-          <div className="flex min-w-[240px] items-center gap-3">
+          <Link
+            className="flex min-w-[240px] items-center gap-3 rounded-md outline-none hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/50"
+            to="/admin/inventory/$vehicleId"
+            params={{ vehicleId: vehicle.id }}
+            onClick={(event) => event.stopPropagation()}
+          >
             {imageUrl ? (
               <img
                 alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
@@ -146,7 +159,7 @@ function getColumns({
                 {vehicle.year} · {vehicle.seats} seats · {vehicle.doors} doors
               </p>
             </div>
-          </div>
+          </Link>
         );
       },
     },
@@ -252,12 +265,14 @@ function getColumns({
       id: "actions",
       cell: ({ row }) => (
         <div className="flex justify-end">
-          <Button
-            aria-label={`View ${row.original.make} ${row.original.model}`}
-            size="icon-sm"
-            variant="ghost"
-          >
-            <Eye className="h-4 w-4" />
+          <Button aria-label={`Edit ${row.original.make} ${row.original.model}`} asChild size="icon-sm" variant="ghost">
+            <Link
+              to="/admin/inventory/$vehicleId"
+              params={{ vehicleId: row.original.id }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Pencil className="h-4 w-4" />
+            </Link>
           </Button>
         </div>
       ),
@@ -282,6 +297,13 @@ export function InventoryDataTable({
   onPageChange,
   onSortChange,
 }: InventoryDataTableProps) {
+  const navigate = useNavigate();
+  const handleEditVehicle = useCallback((vehicleId: string) => {
+    void navigate({
+      to: "/admin/inventory/$vehicleId",
+      params: { vehicleId },
+    });
+  }, [navigate]);
   const data = useMemo(
     () =>
       vehicles.map((vehicle) => ({
@@ -291,7 +313,12 @@ export function InventoryDataTable({
     [vehicles],
   );
   const columns = useMemo(
-    () => getColumns({ onSortChange, sortBy, sortDirection }),
+    () =>
+      getColumns({
+        onSortChange,
+        sortBy,
+        sortDirection,
+      }),
     [onSortChange, sortBy, sortDirection],
   );
   const table = useReactTable({
@@ -373,7 +400,20 @@ export function InventoryDataTable({
           <TableBody>
             {table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id}>
+                <TableRow
+                  aria-label={`Edit ${row.original.year} ${row.original.make} ${row.original.model}`}
+                  className="cursor-pointer"
+                  key={row.id}
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => handleEditVehicle(row.original.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      handleEditVehicle(row.original.id);
+                    }
+                  }}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
                       {flexRender(
