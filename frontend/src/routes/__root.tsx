@@ -12,43 +12,56 @@ export const Route = createRootRoute({
 function RootLayout() {
   const auth = useAuth();
   const location = useLocation();
+  const isStaff = auth.user?.roles.some((role) =>
+    ["admin", "employee"].includes(role.toLowerCase()),
+  );
   const isAdminRoute =
     location.pathname === "/admin" || location.pathname.startsWith("/admin/");
 
   return (
     <div className="min-h-screen bg-background">
       {!isAdminRoute ? (
-        <header className="sticky top-0 z-50 bg-background border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 py-4">
+        <header className="sticky top-0 z-50 border-b border-[#dfded8] bg-white">
+          <div className="mx-auto max-w-7xl px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-4">
-              <Link to="/" className="flex flex-between items-center gap-2">
-                <Car className="h-6 w-6" />
-                <span className="font-semibold text-lg">Car Rental</span>
+              <Link to="/" className="flex items-center gap-3 text-[#141a1f]">
+                <span className="flex size-9 items-center justify-center rounded-full bg-[#105645] text-white">
+                  <Car />
+                </span>
+                <span className="text-xl font-black tracking-normal">CarRental</span>
               </Link>
-              <div className="flex gap-3">
-                <Link to="/">
-                  <Button variant="ghost" size="sm">Home</Button>
+              <nav className="hidden items-center gap-8 text-base font-semibold text-[#141a1f] md:flex">
+                <Link to="/browse" className="hover:text-[#105645]">
+                  Browse
                 </Link>
-                <Link to="/browse">
-                  <Button variant="ghost" size="sm">Browse</Button>
+                <Link
+                  to="/"
+                  hash="testimonials"
+                  className="hover:text-[#105645]"
+                >
+                  Testimonials
                 </Link>
-                {auth.user?.roles.some((role) => role.toLowerCase() === "admin") ? (
-                  <Link to="/admin">
-                    <Button variant="ghost" size="sm">Admin</Button>
-                  </Link>
-                ) : null}
-              </div>
+                <Link to="/about" className="hover:text-[#105645]">
+                  Help
+                </Link>
+              </nav>
               <div className="flex items-center gap-3">
                 {auth.isReady && auth.isAuthenticated ? (
                   <>
-                    <Link to="/bookings">
-                      <Button variant="ghost" size="sm">
-                        My Bookings
-                      </Button>
-                    </Link>
+                    <Button
+                      asChild
+                      variant="ghost"
+                      className="h-11 rounded-md px-4 text-base"
+                    >
+                      {isStaff ? (
+                        <Link to="/admin">Admin</Link>
+                      ) : (
+                        <Link to="/bookings">My Bookings</Link>
+                      )}
+                    </Button>
                     <Button
                       variant="outline"
-                      size="sm"
+                      className="h-11 rounded-md px-4 text-base"
                       onClick={() => void auth.logout()}
                     >
                       Log out
@@ -58,14 +71,14 @@ function RootLayout() {
                   <>
                     <Button
                       variant="ghost"
-                      size="sm"
+                      className="h-11 rounded-md px-4 text-base"
                       disabled={!auth.isReady}
                       onClick={() => void auth.login(window.location.href)}
                     >
                       Log in
                     </Button>
                     <Button
-                      size="sm"
+                      className="h-11 rounded-md bg-[#105645] px-4 text-base text-white hover:bg-[#174f43]"
                       disabled={!auth.isReady}
                       onClick={() => void auth.register(window.location.href)}
                     >

@@ -29,31 +29,107 @@ import {
 } from "@/lib/api";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { addDays, format } from "date-fns";
+import { addDays, format, isValid, parseISO } from "date-fns";
 import { CalendarIcon, Loader2, SlidersHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
-export const Route = createFileRoute("/browse")({
-  component: Index,
-});
-
 const PAGE_SIZE = 20;
 const MAX_PRICE = 300;
 
-function Index() {
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: addDays(new Date(), 1),
-    to: addDays(new Date(), 8),
-  });
+interface BrowseSearchParams {
+  startDate?: string;
+  endDate?: string;
+  category?: VehicleCategory;
+  transmissionType?: TransmissionType;
+  fuelType?: FuelType;
+  minSeats?: number;
+  maxPricePerDay?: number;
+}
 
-  const [category, setCategory] = useState<VehicleCategory | undefined>();
+function parseDateSearch(value: unknown) {
+  if (typeof value !== "string") return undefined;
+
+  const date = parseISO(value);
+
+  return isValid(date) ? format(date, "yyyy-MM-dd") : undefined;
+}
+
+function parseCategorySearch(value: unknown) {
+  return VEHICLE_CATEGORIES.includes(value as VehicleCategory)
+    ? (value as VehicleCategory)
+    : undefined;
+}
+
+function parseTransmissionSearch(value: unknown) {
+  return TRANSMISSION_TYPES.includes(value as TransmissionType)
+    ? (value as TransmissionType)
+    : undefined;
+}
+
+function parseFuelTypeSearch(value: unknown) {
+  return FUEL_TYPES.includes(value as FuelType)
+    ? (value as FuelType)
+    : undefined;
+}
+
+function parseNumberSearch(value: unknown) {
+  const numericValue =
+    typeof value === "string" || typeof value === "number"
+      ? Number(value)
+      : Number.NaN;
+
+  return Number.isFinite(numericValue) ? numericValue : undefined;
+}
+
+function getInitialDateRange(search: BrowseSearchParams): DateRange | undefined {
+  if (!search.startDate || !search.endDate) {
+    return {
+      from: addDays(new Date(), 1),
+      to: addDays(new Date(), 8),
+    };
+  }
+
+  return {
+    from: parseISO(search.startDate),
+    to: parseISO(search.endDate),
+  };
+}
+
+export const Route = createFileRoute("/browse")({
+  component: Index,
+  validateSearch: (search: Record<string, unknown>): BrowseSearchParams => ({
+    startDate: parseDateSearch(search.startDate),
+    endDate: parseDateSearch(search.endDate),
+    category: parseCategorySearch(search.category),
+    transmissionType: parseTransmissionSearch(search.transmissionType),
+    fuelType: parseFuelTypeSearch(search.fuelType),
+    minSeats: parseNumberSearch(search.minSeats),
+    maxPricePerDay: parseNumberSearch(search.maxPricePerDay),
+  }),
+});
+
+function Index() {
+  const search = Route.useSearch();
+  const [date, setDate] = useState<DateRange | undefined>(() =>
+    getInitialDateRange(search),
+  );
+
+  const [category, setCategory] = useState<VehicleCategory | undefined>(
+    search.category,
+  );
   const [transmission, setTransmission] = useState<
     TransmissionType | undefined
-  >();
-  const [fuelType, setFuelType] = useState<FuelType | undefined>();
-  const [minSeats, setMinSeats] = useState<number | undefined>();
-  const [maxPrice, setMaxPrice] = useState<number>(MAX_PRICE);
+  >(search.transmissionType);
+  const [fuelType, setFuelType] = useState<FuelType | undefined>(
+    search.fuelType,
+  );
+  const [minSeats, setMinSeats] = useState<number | undefined>(
+    search.minSeats,
+  );
+  const [maxPrice, setMaxPrice] = useState<number>(
+    search.maxPricePerDay ?? MAX_PRICE,
+  );
 
   const filters = useMemo<Omit<VehicleQueryParams, "cursor" | "pageSize">>(
     () => ({
