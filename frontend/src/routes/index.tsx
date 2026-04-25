@@ -92,8 +92,8 @@ function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f8f7f4] text-[#141a1f]">
-      <section className="relative min-h-[860px] overflow-hidden border-b border-[#dfded8] bg-[#e6ebe1] lg:min-h-[940px]">
+    <main className="min-h-screen bg-background text-foreground">
+      <section className="relative min-h-[860px] overflow-hidden border-b border-border bg-accent lg:min-h-[940px]">
         <div className="absolute inset-0">
           <img
             src="/landing-assets/hero-crossover.png"
@@ -103,11 +103,11 @@ function HomePage() {
         </div>
 
         <div className="relative mx-auto grid min-h-[860px] max-w-7xl items-center px-5 py-14 sm:px-6 lg:min-h-[940px] lg:grid-cols-[540px_1fr] lg:py-20">
-          <div className="z-10 max-w-[560px] rounded-lg border border-white/75 bg-white/[0.94] p-5 shadow-2xl shadow-black/20 backdrop-blur-md sm:p-7">
-            <h1 className="text-5xl leading-[1.02] font-black tracking-normal text-[#101417] sm:text-6xl lg:text-7xl">
+          <div className="z-10 max-w-[560px] rounded-lg border border-card/75 bg-card/[0.94] p-5 shadow-2xl shadow-black/20 backdrop-blur-md sm:p-7">
+            <h1 className="text-5xl leading-[1.02] font-black tracking-normal text-card-foreground sm:text-6xl lg:text-7xl">
               Rent the right car for every drive
             </h1>
-            <p className="mt-6 text-lg leading-8 text-[#4f555b]">
+            <p className="mt-6 text-lg leading-8 text-muted-foreground">
               One local rental office, a dependable fleet, and simple pricing
               for errands, weekend plans, and business trips.
             </p>
@@ -120,9 +120,9 @@ function HomePage() {
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="flex h-12 min-w-0 items-center gap-3 rounded-md border border-[#deded8] bg-white px-4 text-left text-sm text-[#4f555b] outline-none transition-colors hover:border-[#105645]/50 focus-visible:border-[#105645] focus-visible:ring-3 focus-visible:ring-[#105645]/20"
+                        className="flex h-12 min-w-0 items-center gap-3 rounded-md border border-border bg-card px-4 text-left text-sm text-muted-foreground outline-none transition-colors hover:border-primary/50 focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/20"
                       >
-                        <CalendarDays className="text-[#105645]" />
+                        <CalendarDays className="text-primary" />
                         <span className="truncate">{dateLabel}</span>
                       </button>
                     </PopoverTrigger>
@@ -148,10 +148,10 @@ function HomePage() {
                   >
                     <SelectTrigger
                       size="lg"
-                      className="w-full rounded-md border-[#deded8] bg-white px-3 text-[#4f555b]"
+                      className="w-full rounded-md border-border bg-card px-3 text-muted-foreground"
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <Car className="text-[#105645]" />
+                        <Car className="text-primary" />
                         <SelectValue placeholder="Any vehicle" />
                       </span>
                     </SelectTrigger>
@@ -169,17 +169,17 @@ function HomePage() {
 
               <Button
                 type="submit"
-                className="h-12 rounded-md bg-[#105645] text-white hover:bg-[#174f43]"
+                className="h-12 rounded-md bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Check availability
               </Button>
             </form>
 
-            <div className="mt-5 flex flex-wrap items-center gap-5 text-sm text-[#4f555b]">
+            <div className="mt-5 flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
               {["Free cancellation", "No hidden fees", "24/7 support"].map(
                 (item) => (
                   <span key={item} className="inline-flex items-center gap-2">
-                    <CheckCircle2 className="text-[#105645]" />
+                    <CheckCircle2 className="text-primary" />
                     {item}
                   </span>
                 )
@@ -196,14 +196,14 @@ function HomePage() {
           <div className="mx-auto max-w-2xl text-center">
             <Badge
               variant="outline"
-              className="rounded-md border-[#105645]/20 bg-transparent text-[#105645]"
+              className="rounded-md border-primary/20 bg-transparent text-primary"
             >
               Testimonials
             </Badge>
             <h2 className="mt-3 text-4xl leading-tight font-black tracking-normal">
               Trusted by local drivers
             </h2>
-            <p className="mt-2 text-[#646970]">
+            <p className="mt-2 text-muted-foreground">
               Straightforward rentals, clean cars, and a pickup process people
               come back for.
             </p>
@@ -213,10 +213,10 @@ function HomePage() {
             {testimonials.map((testimonial) => (
               <Card
                 key={testimonial.name}
-                className="rounded-lg border-[#deded8] bg-white py-0 shadow-sm"
+                className="rounded-lg border-border bg-card py-0 shadow-sm"
               >
                 <CardHeader className="px-5 pt-5">
-                  <div className="flex items-center gap-1 text-[#105645]">
+                  <div className="flex items-center gap-1 text-primary">
                     {Array.from({ length: 5 }).map((_, index) => (
                       <Star key={index} className="fill-current" />
                     ))}
@@ -226,12 +226,12 @@ function HomePage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
-                  <blockquote className="text-base leading-7 text-[#33383d]">
+                  <blockquote className="text-base leading-7 text-card-foreground">
                     “{testimonial.quote}”
                   </blockquote>
-                  <div className="mt-6 border-t border-[#deded8] pt-4">
+                  <div className="mt-6 border-t border-border pt-4">
                     <p className="font-bold">{testimonial.name}</p>
-                    <p className="text-sm text-[#646970]">{testimonial.trip}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.trip}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -240,10 +240,10 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-[#deded8] bg-white px-5 py-12 sm:px-6">
+      <section className="border-y border-border bg-card px-5 py-12 sm:px-6">
         <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
-            <Badge className="rounded-md bg-[#105645] text-white">
+            <Badge className="rounded-md bg-primary text-primary-foreground">
               Local service
             </Badge>
             <h2 className="mt-4 max-w-xl text-4xl leading-tight font-black tracking-normal">
@@ -256,16 +256,16 @@ function HomePage() {
               ["Clear prices", "Daily and weekly rates shown up front."],
               ["Ready vehicles", "A focused fleet maintained for local trips."],
             ].map(([title, body]) => (
-              <div key={title} className="border-l border-[#deded8] pl-5">
+              <div key={title} className="border-l border-border pl-5">
                 <h3 className="font-bold">{title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[#646970]">{body}</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">{body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <footer className="px-5 py-7 text-sm text-[#646970] sm:px-6">
+      <footer className="px-5 py-7 text-sm text-muted-foreground sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <span>© {new Date().getFullYear()} CarRental.</span>
           <span>Local fleet · Transparent pricing · Fast pickup</span>
@@ -277,7 +277,7 @@ function HomePage() {
 
 function FormLabel({ children }: { children: string }) {
   return (
-    <span className="text-xs font-bold tracking-normal text-[#41474d] uppercase">
+    <span className="text-xs font-bold tracking-normal text-muted-foreground uppercase">
       {children}
     </span>
   );

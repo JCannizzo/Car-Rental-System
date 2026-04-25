@@ -3,7 +3,7 @@ import { Search, Car, Home } from "lucide-react";
 
 export default function Navbar() {
   return (
-    <nav className="border-b bg-white">
+    <nav className="border-b bg-card">
       <div className="flex h-16 items-center px-4 max-w-7xl mx-auto">
         {/* Logo / Brand */}
         <Link to="/" className="font-bold text-xl mr-8">
