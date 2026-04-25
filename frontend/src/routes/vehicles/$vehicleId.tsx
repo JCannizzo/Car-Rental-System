@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   CalendarIcon,
   Car,
+  CheckCircle2,
   DoorOpen,
   Fuel,
   Gauge,
@@ -54,22 +55,28 @@ function VehicleDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex min-h-[60vh] items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
   }
 
   if (isError || !vehicle) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-12 text-center">
-        <p className="text-lg font-medium">Vehicle not found</p>
-        <p className="text-sm text-muted-foreground mt-1">
+      <div className="min-h-[60vh] bg-background px-5 py-12 text-center sm:px-6">
+        <div className="mx-auto max-w-xl rounded-lg border border-border bg-card p-8 shadow-sm">
+          <p className="text-xl font-black text-card-foreground">Vehicle not found</p>
+          <p className="mt-2 text-sm text-muted-foreground">
           The vehicle you're looking for doesn't exist or is unavailable.
-        </p>
-        <Button variant="outline" className="mt-4" asChild>
-          <Link to="/">Back to listings</Link>
-        </Button>
+          </p>
+          <Button
+            variant="outline"
+            className="mt-5 rounded-md border-border"
+            asChild
+          >
+            <Link to="/browse">Back to listings</Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -149,6 +156,11 @@ function VehicleDetailContent({
 
   const imageUrl =
     activeImage === "side" ? vehicle.imageUrl : vehicle.imageUrlFront;
+  const dateLabel = date?.from
+    ? date.to
+      ? `${format(date.from, "LLL dd, y")} - ${format(date.to, "LLL dd, y")}`
+      : format(date.from, "LLL dd, y")
+    : "Select dates";
 
   const specs = [
     { icon: CalendarIcon, label: "Year", value: vehicle.year },
@@ -164,213 +176,269 @@ function VehicleDetailContent({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <Link
-        to="/"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to listings
-      </Link>
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-7xl px-5 py-6 sm:px-6 lg:py-8">
+        <Link
+          to="/browse"
+          search={{
+            startDate: initialStartDate,
+            endDate: initialEndDate,
+          }}
+          className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to listings
+        </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-8">
-        <div className="space-y-6">
-          <div
-            className="rounded-xl overflow-hidden border border-border bg-muted/30 cursor-pointer"
-            onClick={() => setIsImageExpanded(true)}
-          >
-            <img
-              src={imageUrl}
-              alt={`${vehicle.make} ${vehicle.model}`}
-              className="w-full aspect-[16/10] object-cover"
-            />
-          </div>
-          {isImageExpanded && (
-            <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-              onClick={() => setIsImageExpanded(false)}
-            >
-              <img
-                src={imageUrl}
-                alt={`${vehicle.make} ${vehicle.model}`}
-                className="max-w-[90vw] max-h-[90vh] rounded-2xl border border-slate-300 bg-white object-contain shadow-2xl"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setIsImageExpanded(false);
-                }}
-              />
-            </div>
-          )}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveImage("side")}
-              className={`rounded-lg overflow-hidden border-2 transition-colors ${
-                activeImage === "side"
-                  ? "border-primary"
-                  : "border-border hover:border-muted-foreground/50"
-              }`}
-            >
-              <img
-                src={vehicle.imageUrl}
-                alt="Side view"
-                className="w-20 h-14 object-cover"
-              />
-            </button>
-            <button
-              onClick={() => setActiveImage("front")}
-              className={`rounded-lg overflow-hidden border-2 transition-colors ${
-                activeImage === "front"
-                  ? "border-primary"
-                  : "border-border hover:border-muted-foreground/50"
-              }`}
-            >
-              <img
-                src={vehicle.imageUrlFront}
-                alt="Front view"
-                className="w-20 h-14 object-cover"
-              />
-            </button>
-          </div>
-          <div>
-            <h2 className="text-sm font-medium text-muted-foreground mb-3">
-              Specifications
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {specs.map((spec) => (
-                <div
-                  key={spec.label}
-                  className="flex items-center gap-2.5 rounded-lg border border-border p-3"
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+          <section className="min-w-0 space-y-5">
+            {isImageExpanded && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4"
+                onClick={() => setIsImageExpanded(false)}
+              >
+                <img
+                  src={imageUrl}
+                  alt={`${vehicle.make} ${vehicle.model}`}
+                  className="max-h-[90vh] max-w-[90vw] rounded-lg border border-card/40 bg-card object-contain shadow-2xl"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsImageExpanded(false);
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <Badge
+                    variant="outline"
+                    className="rounded-md border-primary/20 bg-background text-primary"
+                  >
+                    {vehicle.category}
+                  </Badge>
+                  <h1 className="mt-3 text-4xl font-black leading-tight tracking-normal text-card-foreground">
+                    {vehicle.year} {vehicle.make} {vehicle.model}
+                  </h1>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    Clean, ready, and priced clearly for local pickup.
+                  </p>
+                </div>
+                <div className="shrink-0 sm:text-right">
+                  <p className="text-sm font-medium text-muted-foreground">From</p>
+                  <p className="text-4xl font-black leading-none text-card-foreground">
+                    ${vehicle.pricePerDay}
+                  </p>
+                  <p className="text-sm text-muted-foreground">per day</p>
+                </div>
+              </div>
+
+              <div className="mt-5 border-y border-border py-5">
+                <button
+                  type="button"
+                  className="block w-full overflow-hidden rounded-md bg-card text-left"
+                  onClick={() => setIsImageExpanded(true)}
                 >
-                  <spec.icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">
-                      {spec.label}
-                    </p>
-                    <p className="text-sm font-medium truncate">{spec.value}</p>
+                  <img
+                    src={imageUrl}
+                    alt={`${vehicle.make} ${vehicle.model}`}
+                    className="aspect-[16/10] w-full object-cover"
+                  />
+                </button>
+
+                <div className="mt-3 flex gap-2">
+                  <ImageThumb
+                    active={activeImage === "side"}
+                    imageUrl={vehicle.imageUrl}
+                    label="Side view"
+                    onClick={() => setActiveImage("side")}
+                  />
+                  <ImageThumb
+                    active={activeImage === "front"}
+                    imageUrl={vehicle.imageUrlFront}
+                    label="Front view"
+                    onClick={() => setActiveImage("front")}
+                  />
+                </div>
+              </div>
+
+              <div className="mt-5">
+                <h2 className="text-sm font-bold uppercase tracking-normal text-muted-foreground">
+                  Specifications
+                </h2>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {specs.map((spec) => (
+                    <div
+                      key={spec.label}
+                      className="flex items-center gap-3 rounded-lg border border-border bg-background p-3"
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-background text-primary">
+                        <spec.icon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">{spec.label}</p>
+                        <p className="truncate text-sm font-bold text-card-foreground">
+                          {spec.value}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {vehicle.features.length > 0 && (
+                <div className="mt-6">
+                  <h2 className="text-sm font-bold uppercase tracking-normal text-muted-foreground">
+                    Features
+                  </h2>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {vehicle.features.map((feature) => (
+                      <Badge
+                        key={feature}
+                        variant="secondary"
+                        className="rounded-md border border-border bg-background px-3 py-1.5 text-muted-foreground"
+                      >
+                        {feature}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-          {vehicle.features.length > 0 && (
-            <div>
-              <h2 className="text-sm font-medium text-muted-foreground mb-3">
-                Features
-              </h2>
-              <div className="flex flex-wrap gap-2">
-                {vehicle.features.map((feature) => (
-                  <Badge key={feature} variant="secondary">
-                    {feature}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="lg:sticky lg:top-[80px] lg:self-start space-y-6">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Badge variant="outline">{vehicle.category}</Badge>
-            </div>
-            <h1 className="text-2xl font-semibold">
-              {vehicle.year} {vehicle.make} {vehicle.model}
-            </h1>
-            <div className="flex items-baseline gap-1 mt-2">
-              <span className="text-3xl font-bold">${vehicle.pricePerDay}</span>
-              <span className="text-muted-foreground">/day</span>
-            </div>
-          </div>
-
-          <Separator />
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Field>
-              <FieldLabel>Pick-up & Return Dates</FieldLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full justify-start px-2.5 font-normal"
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                    {date?.from ? (
-                      date.to ? (
-                        <>
-                          {format(date.from, "LLL dd, y")} -{" "}
-                          {format(date.to, "LLL dd, y")}
-                        </>
-                      ) : (
-                        format(date.from, "LLL dd, y")
-                      )
-                    ) : (
-                      <span className="text-muted-foreground">
-                        Select dates
-                      </span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="range"
-                    defaultMonth={date?.from}
-                    selected={date}
-                    onSelect={setDate}
-                    numberOfMonths={2}
-                    disabled={{ before: addDays(new Date(), 1) }}
-                  />
-                </PopoverContent>
-              </Popover>
-              {dateError && <FieldError>{dateError}</FieldError>}
-            </Field>
-
-            {days > 0 && (
-              <div className="rounded-lg bg-muted/50 p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    ${vehicle.pricePerDay} x {days} day{days !== 1 && "s"}
-                  </span>
-                  <span className="font-medium">${totalPrice}</span>
-                </div>
-                <Separator />
-                <div className="flex justify-between font-semibold">
-                  <span>Total</span>
-                  <span>${totalPrice}</span>
-                </div>
-              </div>
-            )}
-
-            {submitError && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                {submitError}
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              className="w-full"
-              size="lg"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Redirecting to checkout...
-                </>
-              ) : (
-                <>
-                  <Car className="h-4 w-4" />
-                  Book Now
-                </>
               )}
-            </Button>
+            </div>
+          </section>
 
-            <p className="text-xs text-center text-muted-foreground">
-              You'll be redirected to Stripe to complete payment
-            </p>
-          </form>
+          <aside className="lg:sticky lg:top-[88px] lg:self-start">
+            <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
+              <div className="border-b border-border pb-5">
+                <p className="text-sm font-bold uppercase tracking-normal text-primary">
+                  Reserve this car
+                </p>
+                <h2 className="mt-1 text-2xl font-black tracking-normal text-card-foreground">
+                  Choose your rental dates
+                </h2>
+                <div className="mt-4 grid gap-2 text-sm text-muted-foreground">
+                  {["Free cancellation", "No hidden fees", "Secure checkout"].map(
+                    (item) => (
+                      <span key={item} className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-primary" />
+                        {item}
+                      </span>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+                <Field>
+                  <FieldLabel className="text-xs font-bold uppercase tracking-normal text-muted-foreground">
+                    Pick-up & return
+                  </FieldLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-12 w-full justify-start rounded-md border-border bg-card px-3 font-normal text-muted-foreground hover:border-primary/50"
+                      >
+                        <CalendarIcon className="h-4 w-4 text-primary" />
+                        <span className="truncate">{dateLabel}</span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                        disabled={{ before: addDays(new Date(), 1) }}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {dateError && <FieldError>{dateError}</FieldError>}
+                </Field>
+
+                <div className="rounded-lg border border-border bg-background p-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">
+                      ${vehicle.pricePerDay} x {Math.max(days, 1)} day
+                      {Math.max(days, 1) !== 1 && "s"}
+                    </span>
+                    <span className="font-bold text-card-foreground">
+                      ${days > 0 ? totalPrice : vehicle.pricePerDay}
+                    </span>
+                  </div>
+                  <Separator className="my-3 bg-border" />
+                  <div className="flex justify-between text-lg font-black text-card-foreground">
+                    <span>Total</span>
+                    <span>${days > 0 ? totalPrice : vehicle.pricePerDay}</span>
+                  </div>
+                  {days === 0 && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Select dates to calculate the full trip total.
+                    </p>
+                  )}
+                </div>
+
+                {submitError && (
+                  <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+                    {submitError}
+                  </div>
+                )}
+
+                <Button
+                  type="submit"
+                  className="h-12 w-full rounded-md bg-primary text-base font-bold text-primary-foreground hover:bg-primary/90"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Redirecting to checkout...
+                    </>
+                  ) : (
+                    <>
+                      <Car className="h-4 w-4" />
+                      Book now
+                    </>
+                  )}
+                </Button>
+
+                <p className="text-center text-xs text-muted-foreground">
+                  You'll be redirected to Stripe to complete payment.
+                </p>
+              </form>
+            </div>
+          </aside>
         </div>
       </div>
-    </div>
+    </main>
+  );
+}
+
+function ImageThumb({
+  active,
+  imageUrl,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  imageUrl: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`overflow-hidden rounded-md border-2 bg-card transition-colors ${
+        active
+          ? "border-primary"
+          : "border-border hover:border-primary/40"
+      }`}
+    >
+      <img src={imageUrl} alt={label} className="h-16 w-24 object-cover" />
+    </button>
   );
 }

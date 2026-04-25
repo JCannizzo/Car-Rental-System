@@ -21,27 +21,27 @@ function RootLayout() {
   return (
     <div className="min-h-screen bg-background">
       {!isAdminRoute ? (
-        <header className="sticky top-0 z-50 border-b border-[#dfded8] bg-white">
+        <header className="sticky top-0 z-50 border-b border-border bg-card">
           <div className="mx-auto max-w-7xl px-5 py-4 sm:px-6">
             <div className="flex items-center justify-between gap-4">
-              <Link to="/" className="flex items-center gap-3 text-[#141a1f]">
-                <span className="flex size-9 items-center justify-center rounded-full bg-[#105645] text-white">
+              <Link to="/" className="flex items-center gap-3 text-foreground">
+                <span className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Car />
                 </span>
                 <span className="text-xl font-black tracking-normal">CarRental</span>
               </Link>
-              <nav className="hidden items-center gap-8 text-base font-semibold text-[#141a1f] md:flex">
-                <Link to="/browse" className="hover:text-[#105645]">
+              <nav className="hidden items-center gap-8 text-base font-semibold text-foreground md:flex">
+                <Link to="/browse" className="hover:text-primary">
                   Browse
                 </Link>
                 <Link
                   to="/"
                   hash="testimonials"
-                  className="hover:text-[#105645]"
+                  className="hover:text-primary"
                 >
                   Testimonials
                 </Link>
-                <Link to="/about" className="hover:text-[#105645]">
+                <Link to="/about" className="hover:text-primary">
                   Help
                 </Link>
               </nav>
@@ -78,7 +78,7 @@ function RootLayout() {
                       Log in
                     </Button>
                     <Button
-                      className="h-11 rounded-md bg-[#105645] px-4 text-base text-white hover:bg-[#174f43]"
+                      className="h-11 rounded-md bg-primary px-4 text-base text-primary-foreground hover:bg-primary/90"
                       disabled={!auth.isReady}
                       onClick={() => void auth.register(window.location.href)}
                     >
