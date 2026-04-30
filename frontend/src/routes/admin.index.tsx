@@ -3,7 +3,6 @@ import {
   AdminErrorState,
   AdminLoadingState,
   AdminShell,
-  StatusBadge,
   useAdminAccess,
 } from "@/components/admin/admin-layout";
 import {
@@ -14,16 +13,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { fetchAdminVehicles, type Vehicle } from "@/lib/api";
+import {
+  fetchAdminBookings,
+  fetchAdminVehicles,
+  type AdminBooking,
+  type PaginatedResult,
+  type Vehicle,
+} from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { format, parseISO } from "date-fns";
 import {
   CalendarClock,
   Car,
+  CheckCircle2,
   DollarSign,
-  PlusCircle,
-  Wrench,
+  RotateCcw,
+  XCircle,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
@@ -33,90 +40,182 @@ export const Route = createFileRoute("/admin/")({
 function AdminDashboardPage() {
   const { auth, isAdmin, isAllowed } = useAdminAccess("/admin");
 
-  const { data, error, isError, isLoading } = useQuery({
+  const vehiclesQuery = useQuery({
     enabled: auth.isReady && auth.isAuthenticated && isAdmin,
     queryFn: fetchAdminVehicles,
     queryKey: ["admin-vehicles"],
     retry: false,
   });
 
-  if (!isAllowed || isLoading) {
+  const bookingsQuery = useQuery({
+    enabled: auth.isReady && auth.isAuthenticated && isAdmin,
+    queryFn: () =>
+      fetchAdminBookings({
+        page: 1,
+        pageSize: 6,
+        sortBy: "createdAt",
+        sortDirection: "desc",
+      }),
+    queryKey: ["admin-bookings", "dashboard", "recent"],
+    retry: false,
+  });
+
+  const pendingBookingsQuery = useQuery({
+    enabled: auth.isReady && auth.isAuthenticated && isAdmin,
+    queryFn: () =>
+      fetchAdminBookings({
+        page: 1,
+        pageSize: 1,
+        status: "Pending",
+      }),
+    queryKey: ["admin-bookings", "dashboard", "pending-count"],
+    retry: false,
+  });
+
+  const returnsQuery = useQuery({
+    enabled: auth.isReady && auth.isAuthenticated && isAdmin,
+    queryFn: () =>
+      fetchAdminBookings({
+        page: 1,
+        pageSize: 6,
+        paymentStatus: "Paid",
+        sortBy: "returnDate",
+        sortDirection: "asc",
+        status: "Confirmed",
+      }),
+    queryKey: ["admin-returns", "dashboard"],
+    retry: false,
+  });
+
+  const completedReturnsQuery = useQuery({
+    enabled: auth.isReady && auth.isAuthenticated && isAdmin,
+    queryFn: () =>
+      fetchAdminBookings({
+        page: 1,
+        pageSize: 1,
+        status: "Completed",
+      }),
+    queryKey: ["admin-bookings", "dashboard", "completed-count"],
+    retry: false,
+  });
+
+  if (
+    !isAllowed ||
+    vehiclesQuery.isLoading ||
+    bookingsQuery.isLoading ||
+    pendingBookingsQuery.isLoading ||
+    returnsQuery.isLoading ||
+    completedReturnsQuery.isLoading
+  ) {
     return <AdminLoadingState />;
   }
 
-  if (isError) {
-    return <AdminErrorState error={error} />;
+  const failedQuery = [
+    vehiclesQuery,
+    bookingsQuery,
+    pendingBookingsQuery,
+    returnsQuery,
+    completedReturnsQuery,
+  ].find((query) => query.isError);
+
+  if (failedQuery?.isError) {
+    return <AdminErrorState error={failedQuery.error} />;
   }
 
-  return <AdminShell>{renderDashboardContent(data ?? [])}</AdminShell>;
+  return (
+    <AdminShell>
+      {renderDashboardContent({
+        bookings: bookingsQuery.data,
+        completedReturns: completedReturnsQuery.data,
+        pendingBookings: pendingBookingsQuery.data,
+        returns: returnsQuery.data,
+        vehicles: vehiclesQuery.data ?? [],
+      })}
+    </AdminShell>
+  );
 }
 
-function renderDashboardContent(vehicles: Vehicle[]) {
+function renderDashboardContent({
+  bookings,
+  completedReturns,
+  pendingBookings,
+  returns,
+  vehicles,
+}: {
+  bookings?: PaginatedResult<AdminBooking>;
+  completedReturns?: PaginatedResult<AdminBooking>;
+  pendingBookings?: PaginatedResult<AdminBooking>;
+  returns?: PaginatedResult<AdminBooking>;
+  vehicles: Vehicle[];
+}) {
   const summary = getFleetSummary(vehicles);
-  const priorityVehicles = getPriorityVehicles(vehicles).slice(0, 6);
+  const recentBookings = bookings?.items ?? [];
+  const revenue = getVisibleRevenue(recentBookings);
 
   return (
     <section className="grid gap-5 p-4 lg:p-7">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          icon={Car}
-          label="Total vehicles"
-          value={summary.total}
-          badge="Fleet"
-          badgeClassName="bg-sky-50 text-sky-700"
-          note={`${summary.available} available across the fleet`}
-        />
-        <StatCard
           icon={CalendarClock}
-          label="Active rentals"
-          value={summary.rented}
-          badge="Live"
+          label="Total bookings"
+          value={bookings?.totalCount ?? 0}
+          badge="Bookings"
           badgeClassName="bg-sky-50 text-sky-700"
-          note="Vehicles currently marked as rented"
+          note="Reservations loaded from the admin booking queue"
         />
         <StatCard
-          icon={Wrench}
-          label="Maintenance"
-          value={summary.maintenance}
-          badge="Service"
+          icon={XCircle}
+          label="Pending review"
+          value={pendingBookings?.totalCount ?? 0}
+          badge="Action"
           badgeClassName="bg-amber-50 text-amber-700"
-          note="Vehicles paused for inspection or repair"
+          note="Bookings waiting for staff confirmation or cancellation"
+        />
+        <StatCard
+          icon={RotateCcw}
+          label="Return queue"
+          value={returns?.totalCount ?? 0}
+          badge="Returns"
+          badgeClassName="bg-violet-50 text-violet-700"
+          note="Paid confirmed rentals ready for check-in handling"
         />
         <StatCard
           icon={DollarSign}
-          label="Average rate"
-          value={summary.averageRate}
-          badge="Pricing"
+          label="Recent revenue"
+          value={revenue}
+          badge="Paid"
           badgeClassName="bg-emerald-50 text-emerald-700"
-          note="Average daily rate across loaded inventory"
+          note="Paid booking value in the latest loaded reservations"
           valuePrefix="$"
         />
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <OperationLink
-          icon={PlusCircle}
-          title="Add vehicle"
-          description="Create a new fleet record"
-          search={{ addVehicle: true }}
-        />
-        <OperationLink
-          icon={Wrench}
-          title="Maintenance queue"
-          description={`${summary.maintenance} vehicles need service review`}
-          search={{ status: "Maintenance" }}
-        />
-        <OperationLink
           icon={CalendarClock}
-          title="Currently rented"
-          description={`${summary.rented} vehicles are out with renters`}
-          search={{ status: "Rented" }}
+          title="All bookings"
+          description={`${bookings?.totalCount ?? 0} reservations in the admin queue`}
+          to="/admin/bookings"
         />
         <OperationLink
-          icon={Car}
-          title="Ready to rent"
-          description={`${summary.available} vehicles are available`}
-          search={{ status: "Available" }}
+          icon={XCircle}
+          title="Pending bookings"
+          description={`${pendingBookings?.totalCount ?? 0} bookings need status review`}
+          search={{ status: "Pending" }}
+          to="/admin/bookings"
+        />
+        <OperationLink
+          icon={RotateCcw}
+          title="Returns"
+          description={`${returns?.totalCount ?? 0} rentals are ready for check-in`}
+          to="/admin/returns"
+        />
+        <OperationLink
+          icon={CheckCircle2}
+          title="Completed returns"
+          description={`${completedReturns?.totalCount ?? 0} bookings are completed`}
+          search={{ status: "Completed" }}
+          to="/admin/bookings"
         />
       </div>
 
@@ -125,13 +224,13 @@ function renderDashboardContent(vehicles: Vehicle[]) {
           <CardHeader className="border-b">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <CardTitle>Inventory Snapshot</CardTitle>
+                <CardTitle>Recent Bookings</CardTitle>
                 <CardDescription>
-                  Priority vehicles from the admin inventory
+                  Latest reservations from the admin booking page
                 </CardDescription>
               </div>
               <Button asChild size="sm" variant="outline">
-                <Link to="/admin/inventory">Open inventory</Link>
+                <Link to="/admin/bookings">Open bookings</Link>
               </Button>
             </div>
           </CardHeader>
@@ -140,76 +239,60 @@ function renderDashboardContent(vehicles: Vehicle[]) {
               <table className="w-full min-w-[780px] text-left text-sm">
                 <thead className="border-b text-xs uppercase text-muted-foreground">
                   <tr>
+                    <th className="px-4 py-3 font-semibold">Booking</th>
+                    <th className="px-4 py-3 font-semibold">Customer</th>
                     <th className="px-4 py-3 font-semibold">Vehicle</th>
-                    <th className="px-4 py-3 font-semibold">Plate</th>
+                    <th className="px-4 py-3 font-semibold">Dates</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
-                    <th className="px-4 py-3 font-semibold">Mileage</th>
-                    <th className="px-4 py-3 text-right font-semibold">Rate</th>
-                    <th className="px-4 py-3 font-semibold">Next action</th>
+                    <th className="px-4 py-3 text-right font-semibold">Total</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {priorityVehicles.length > 0 ? (
-                    priorityVehicles.map((vehicle) => {
-                      const imageUrl = vehicle.imageUrlFront || vehicle.imageUrl;
-
-                      return (
-                        <tr
-                          key={vehicle.id}
-                          className="border-b transition-colors last:border-0 hover:bg-muted/50"
-                        >
-                          <td className="px-4 py-3">
-                            <Link
-                              className="flex items-center gap-3 rounded-md outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                              to="/admin/inventory/$vehicleId"
-                              params={{ vehicleId: vehicle.id }}
-                            >
-                              {imageUrl ? (
-                                <img
-                                  alt={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                                  className="h-12 w-16 rounded-md border object-cover"
-                                  src={imageUrl}
-                                />
-                              ) : (
-                                <div className="grid h-12 w-16 place-items-center rounded-md border bg-muted">
-                                  <Car className="h-5 w-5 text-muted-foreground" />
-                                </div>
-                              )}
-                              <div>
-                                <p className="font-semibold">
-                                  {vehicle.make} {vehicle.model}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {vehicle.category} · {vehicle.year}
-                                </p>
-                              </div>
-                            </Link>
-                          </td>
-                          <td className="px-4 py-3">
-                            {vehicle.licensePlate || "Unassigned"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <StatusBadge status={vehicle.status} />
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {numberFormatter.format(vehicle.mileage)} mi
-                          </td>
-                          <td className="px-4 py-3 text-right font-medium">
-                            {currencyFormatter.format(vehicle.pricePerDay)}
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {getNextAction(vehicle.status)}
-                          </td>
-                        </tr>
-                      );
-                    })
+                  {recentBookings.length > 0 ? (
+                    recentBookings.map((booking) => (
+                      <tr
+                        key={booking.id}
+                        className="border-b transition-colors last:border-0 hover:bg-muted/50"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-semibold">
+                            {booking.confirmationCode}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Created {formatDate(booking.createdAt)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>{booking.customerName || "Guest customer"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {booking.customerEmail || "No email on file"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div>{booking.vehicleSummary}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {booking.licensePlate || "No plate"}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {formatDate(booking.startDate)} -{" "}
+                          {formatDate(booking.endDate)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <BookingStatusBadge status={booking.status} />
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">
+                          {currencyFormatter.format(booking.totalPrice)}
+                        </td>
+                      </tr>
+                    ))
                   ) : (
                     <tr>
                       <td
                         className="px-4 py-8 text-center text-muted-foreground"
                         colSpan={6}
                       >
-                        No inventory records are loaded yet.
+                        No booking records are loaded yet.
                       </td>
                     </tr>
                   )}
@@ -222,26 +305,28 @@ function renderDashboardContent(vehicles: Vehicle[]) {
         <Card className="rounded-lg shadow-sm">
           <CardHeader className="border-b">
             <CardTitle>Operations Queue</CardTitle>
-            <CardDescription>Highest priority items</CardDescription>
+            <CardDescription>Booking and return work in progress</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <QueueItem
               tone="warning"
-              title="Maintenance review"
-              description={`${summary.needsAttention} vehicles are out of normal rental rotation.`}
-              search={{ status: "Maintenance" }}
+              title="Pending booking decisions"
+              description={`${pendingBookings?.totalCount ?? 0} bookings need confirmation or cancellation.`}
+              search={{ status: "Pending" }}
+              to="/admin/bookings"
             />
             <QueueItem
               tone="info"
-              title="Active rental monitoring"
-              description={`${summary.rented} vehicles are currently marked as rented.`}
-              search={{ status: "Rented" }}
+              title="Vehicle return check-ins"
+              description={`${returns?.totalCount ?? 0} confirmed paid bookings are in the return queue.`}
+              to="/admin/returns"
             />
             <QueueItem
               tone="success"
               title="Fleet availability"
-              description={`${summary.available} vehicles are available and ready to schedule.`}
+              description={`${summary.available} of ${summary.total} vehicles are available after returns and service updates.`}
               search={{ status: "Available" }}
+              to="/admin/inventory"
             />
           </CardContent>
         </Card>
@@ -300,16 +385,18 @@ function OperationLink({
   icon: Icon,
   search,
   title,
+  to,
 }: {
   description: string;
   icon: typeof Car;
-  search?: InventorySearch;
+  search?: AdminDashboardSearch;
   title: string;
+  to: AdminDashboardLink;
 }) {
   return (
     <Link
       className="flex items-center justify-between gap-4 rounded-lg border bg-background p-4 shadow-sm transition-colors hover:bg-muted/60"
-      to="/admin/inventory"
+      to={to}
       search={search}
     >
       <span className="flex min-w-0 items-center gap-3">
@@ -335,11 +422,13 @@ function QueueItem({
   title,
   tone,
   search,
+  to,
 }: {
   description: string;
   title: string;
   tone: "success" | "warning" | "info";
-  search: InventorySearch;
+  search?: AdminDashboardSearch;
+  to: AdminDashboardLink;
 }) {
   const toneClassName =
     tone === "success"
@@ -351,7 +440,7 @@ function QueueItem({
   return (
     <Link
       className="grid grid-cols-[auto_minmax(0,1fr)] gap-3 border-b px-4 py-4 transition-colors last:border-0 hover:bg-muted/50"
-      to="/admin/inventory"
+      to={to}
       search={search}
     >
       <span className={cn("mt-1.5 h-2.5 w-2.5 rounded-full", toneClassName)} />
@@ -375,6 +464,16 @@ type InventorySearch = {
   addVehicle?: boolean;
   status?: string;
 };
+
+type BookingSearch = {
+  paymentStatus?: string;
+  search?: string;
+  status?: string;
+};
+
+type AdminDashboardSearch = BookingSearch | InventorySearch;
+
+type AdminDashboardLink = "/admin/bookings" | "/admin/returns" | "/admin/inventory";
 
 function getFleetSummary(vehicles: Vehicle[]) {
   let available = 0;
@@ -416,37 +515,34 @@ function getFleetSummary(vehicles: Vehicle[]) {
   };
 }
 
-function getPriorityVehicles(vehicles: Vehicle[]) {
-  const statusPriority = new Map([
-    ["maintenance", 0],
-    ["retired", 1],
-    ["rented", 2],
-    ["available", 3],
-  ]);
-
-  return [...vehicles].sort((firstVehicle, secondVehicle) => {
-    const firstStatusPriority =
-      statusPriority.get(firstVehicle.status?.toLowerCase() ?? "") ?? 4;
-    const secondStatusPriority =
-      statusPriority.get(secondVehicle.status?.toLowerCase() ?? "") ?? 4;
-
-    if (firstStatusPriority !== secondStatusPriority) {
-      return firstStatusPriority - secondStatusPriority;
-    }
-
-    return secondVehicle.mileage - firstVehicle.mileage;
-  });
+function getVisibleRevenue(bookings: AdminBooking[]) {
+  return bookings.reduce(
+    (total, booking) =>
+      booking.paymentStatus.toLowerCase() === "paid"
+        ? total + booking.totalPrice
+        : total,
+    0,
+  );
 }
 
-function getNextAction(status?: string) {
-  switch (status?.toLowerCase()) {
-    case "rented":
-      return "Monitor return schedule";
-    case "maintenance":
-      return "Complete service inspection";
-    case "retired":
-      return "Review fleet disposition";
-    default:
-      return "Ready for booking";
-  }
+function formatDate(value: string) {
+  return format(parseISO(value), "MMM d");
+}
+
+function BookingStatusBadge({ status }: { status: string }) {
+  const normalized = status.toLowerCase();
+  const className =
+    normalized === "confirmed"
+      ? "bg-sky-50 text-sky-700"
+      : normalized === "completed"
+        ? "bg-emerald-50 text-emerald-700"
+        : normalized === "pending"
+          ? "bg-amber-50 text-amber-700"
+          : "bg-red-50 text-red-700";
+
+  return (
+    <Badge className={className} variant="secondary">
+      {status}
+    </Badge>
+  );
 }

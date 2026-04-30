@@ -210,20 +210,11 @@ function AdminNav({
           compact && "h-9 shrink-0 border bg-background",
         );
 
-        if (item.href === "/admin" || item.href === "/admin/inventory") {
-          return (
-            <Link key={item.href} to={item.href} className={className}>
-              <Icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          );
-        }
-
         return (
-          <a key={item.href} href={item.href} className={className}>
+          <Link key={item.href} to={item.href} className={className}>
             <Icon className="h-4 w-4" />
             {item.label}
-          </a>
+          </Link>
         );
       })}
     </nav>
