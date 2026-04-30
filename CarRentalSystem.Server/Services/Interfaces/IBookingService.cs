@@ -9,5 +9,8 @@ public interface IBookingService
     Task<BookingDto?> GetBookingByConfirmationCodeAsync(string confirmationCode);
     Task<BookingDto?> GetBookingByIdAsync(Guid id);
     Task<List<BookingDto>> GetBookingsByUserAsync(Guid userId);
+    Task<PaginatedResult<AdminBookingDto>> GetAdminBookingsAsync(AdminBookingQueryParams query);
+    Task<AdminBookingDto?> UpdateBookingStatusAsync(Guid id, string status);
+    Task<AdminBookingDto?> ReturnBookingAsync(Guid id, ReturnBookingDto dto);
     Task<bool> CancelBookingAsync(string confirmationCode);
 }

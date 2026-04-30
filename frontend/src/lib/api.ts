@@ -37,6 +37,16 @@ export type AdminVehicleSortBy =
 
 export type SortDirection = "asc" | "desc";
 
+export type AdminBookingSortBy =
+  | "createdAt"
+  | "date"
+  | "returnDate"
+  | "customer"
+  | "vehicle"
+  | "status"
+  | "payment"
+  | "total";
+
 export interface AdminVehicleQueryParams {
   page?: number;
   pageSize?: number;
@@ -141,6 +151,33 @@ export interface BookingDetails {
   status: string;
   paymentStatus: string;
   createdAt: string;
+}
+
+export interface AdminBooking extends BookingDetails {
+  customerName: string;
+  customerEmail: string;
+  guestPhone: string | null;
+  licensePlate: string;
+  vehicleStatus: string;
+  vehicleMileage: number;
+}
+
+export interface AdminBookingQueryParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  paymentStatus?: string;
+  startDate?: string;
+  endDate?: string;
+  sortBy?: AdminBookingSortBy;
+  sortDirection?: SortDirection;
+}
+
+export interface ReturnBookingRequest {
+  vehicleStatus: "Available" | "Maintenance";
+  mileage?: number;
+  notes?: string;
 }
 
 export interface ClaimBookingResponse {
@@ -285,6 +322,70 @@ export async function fetchMyBookings(): Promise<BookingDetails[]> {
 
   if (!response.ok) {
     throw await readApiError(response, "Failed to fetch your bookings");
+  }
+
+  return response.json();
+}
+
+export async function fetchAdminBookings(
+  params: AdminBookingQueryParams = {},
+): Promise<PaginatedResult<AdminBooking>> {
+  const searchParams = new URLSearchParams();
+
+  searchParams.set("Page", String(params.page ?? 1));
+  searchParams.set("PageSize", String(params.pageSize ?? 15));
+  if (params.search?.trim()) searchParams.set("Search", params.search.trim());
+  if (params.status && params.status !== "all") {
+    searchParams.set("Status", params.status);
+  }
+  if (params.paymentStatus && params.paymentStatus !== "all") {
+    searchParams.set("PaymentStatus", params.paymentStatus);
+  }
+  if (params.startDate) searchParams.set("StartDate", params.startDate);
+  if (params.endDate) searchParams.set("EndDate", params.endDate);
+  if (params.sortBy) searchParams.set("SortBy", params.sortBy);
+  if (params.sortDirection) {
+    searchParams.set("SortDirection", params.sortDirection);
+  }
+
+  const response = await apiFetch(
+    `/api/Bookings/admin?${searchParams.toString()}`,
+  );
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch admin bookings");
+  }
+
+  return response.json();
+}
+
+export async function updateAdminBookingStatus(
+  id: string,
+  status: string,
+): Promise<AdminBooking> {
+  const response = await apiFetch(`/api/Bookings/admin/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to update booking status");
+  }
+
+  return response.json();
+}
+
+export async function returnAdminBooking(
+  id: string,
+  data: ReturnBookingRequest,
+): Promise<AdminBooking> {
+  const response = await apiFetch(`/api/Bookings/admin/${id}/return`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to complete return");
   }
 
   return response.json();

@@ -107,6 +107,82 @@ public class BookingsController : ControllerBase
     }
 
     /// <summary>
+    /// Get a paginated admin view of all bookings.
+    /// </summary>
+    [HttpGet("admin")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<PaginatedResult<AdminBookingDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAdminBookings([FromQuery] AdminBookingQueryParams query)
+    {
+        try
+        {
+            var result = await _bookingService.GetAdminBookingsAsync(query);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Update a booking status from the admin dashboard.
+    /// </summary>
+    [HttpPatch("admin/{id:guid}/status")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<AdminBookingDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateAdminBookingStatus(Guid id, [FromBody] UpdateBookingStatusDto dto)
+    {
+        try
+        {
+            var booking = await _bookingService.UpdateBookingStatusAsync(id, dto.Status);
+            return booking is null ? NotFound() : Ok(booking);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Complete a vehicle return and update the vehicle status.
+    /// </summary>
+    [HttpPost("admin/{id:guid}/return")]
+    [Authorize(Policy = "AdminOnly")]
+    [ProducesResponseType<AdminBookingDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReturnAdminBooking(Guid id, [FromBody] ReturnBookingDto dto)
+    {
+        try
+        {
+            var booking = await _bookingService.ReturnBookingAsync(id, dto);
+            return booking is null ? NotFound() : Ok(booking);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Get a booking by its unique ID (Guid).
     /// </summary>
     [HttpGet("{id:guid}")]
