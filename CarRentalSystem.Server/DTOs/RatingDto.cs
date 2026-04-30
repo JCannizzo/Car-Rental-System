@@ -19,8 +19,19 @@ public class RatingDto
 {
     public Guid Id { get; set; }
     public Guid VehicleId { get; set; }
+    public string VehicleSummary { get; set; } = string.Empty;
     public Guid BookingId { get; set; }
     public Guid UserId { get; set; }
+    public int Score { get; set; }
+    public string? Comment { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class PublicRatingDto
+{
+    public Guid Id { get; set; }
+    public Guid VehicleId { get; set; }
+    public string VehicleSummary { get; set; } = string.Empty;
     public int Score { get; set; }
     public string? Comment { get; set; }
     public DateTime CreatedAt { get; set; }

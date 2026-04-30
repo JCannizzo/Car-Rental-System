@@ -6,22 +6,161 @@ namespace CarRentalSystem.MigrationService;
 
 public static class VehicleSeeder
 {
+    private static readonly Guid CustomerUserId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+    private static readonly Guid MayaRiveraUserId = Guid.Parse("44444444-4444-4444-4444-444444444444");
+    private static readonly Guid NoahChenUserId = Guid.Parse("55555555-5555-5555-5555-555555555555");
+    private static readonly Guid AvaPatelUserId = Guid.Parse("66666666-6666-6666-6666-666666666666");
+    private static readonly Guid LiamBrooksUserId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+    private static readonly Guid DemoReviewerUserId = Guid.Parse("88888888-8888-8888-8888-888888888888");
+
     public static async Task SeedAsync(CarRentalSystemDbContext dbContext, CancellationToken cancellationToken = default)
     {
-        if (await dbContext.Vehicles.AnyAsync(cancellationToken))
-            return;
+        if (!await dbContext.Vehicles.AnyAsync(cancellationToken))
+        {
+            var vehicles = new List<Vehicle>();
+            vehicles.AddRange(GetEconomyVehicles());
+            vehicles.AddRange(GetSedanVehicles());
+            vehicles.AddRange(GetSuvVehicles());
+            vehicles.AddRange(GetTruckVehicles());
+            vehicles.AddRange(GetLuxuryVehicles());
+            vehicles.AddRange(GetVanVehicles());
+            vehicles.AddRange(GetElectricVehicles());
 
-        var vehicles = new List<Vehicle>();
-        vehicles.AddRange(GetEconomyVehicles());
-        vehicles.AddRange(GetSedanVehicles());
-        vehicles.AddRange(GetSuvVehicles());
-        vehicles.AddRange(GetTruckVehicles());
-        vehicles.AddRange(GetLuxuryVehicles());
-        vehicles.AddRange(GetVanVehicles());
-        vehicles.AddRange(GetElectricVehicles());
+            await dbContext.Vehicles.AddRangeAsync(vehicles, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
 
-        await dbContext.Vehicles.AddRangeAsync(vehicles, cancellationToken);
+        if (IsDevelopmentEnvironment())
+        {
+            await SeedDevelopmentActivityAsync(dbContext, cancellationToken);
+        }
+    }
+
+    private static bool IsDevelopmentEnvironment()
+    {
+        var environmentName = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+        return string.Equals(environmentName, Environments.Development, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static async Task SeedDevelopmentActivityAsync(CarRentalSystemDbContext dbContext, CancellationToken cancellationToken)
+    {
+        var licensePlates = new[]
+        {
+            "SED-002", "SUV-002", "LUX-001", "ELC-006", "SUV-004", "TRK-001",
+            "VAN-001", "ELC-003", "ECO-002", "SED-007", "SUV-011", "ELC-010",
+            "SED-003"
+        };
+
+        var vehicles = await dbContext.Vehicles
+            .Where(vehicle => licensePlates.Contains(vehicle.LicensePlate))
+            .ToDictionaryAsync(vehicle => vehicle.LicensePlate, cancellationToken);
+
+        var existingBookings = await dbContext.Bookings
+            .Where(booking => booking.ConfirmationCode.StartsWith("CRS-"))
+            .ToDictionaryAsync(booking => booking.ConfirmationCode, cancellationToken);
+
+        var ratedBookingIds = await dbContext.Ratings
+            .Select(rating => rating.BookingId)
+            .ToHashSetAsync(cancellationToken);
+
+        var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+        var bookings = new List<Booking>();
+
+        Booking? AddBooking(
+            string licensePlate,
+            string confirmationCode,
+            Guid? userId,
+            string? guestName,
+            string? guestEmail,
+            string? guestPhone,
+            int startOffsetDays,
+            int endOffsetDays,
+            BookingStatus status,
+            PaymentStatus paymentStatus,
+            int createdOffsetDays)
+        {
+            if (existingBookings.TryGetValue(confirmationCode, out var existingBooking))
+                return existingBooking;
+
+            if (!vehicles.TryGetValue(licensePlate, out var vehicle))
+                return null;
+
+            var startDate = today.AddDays(startOffsetDays);
+            var endDate = today.AddDays(endOffsetDays);
+            var rentalDays = Math.Max(1, (endDate - startDate).Days);
+
+            var booking = new Booking
+            {
+                Id = Guid.NewGuid(),
+                ConfirmationCode = confirmationCode,
+                VehicleId = vehicle.Id,
+                UserId = userId,
+                GuestName = guestName,
+                GuestEmail = guestEmail,
+                GuestPhone = guestPhone,
+                StartDate = startDate,
+                EndDate = endDate,
+                TotalPrice = rentalDays * vehicle.PricePerDay,
+                Status = status,
+                PaymentStatus = paymentStatus,
+                StripeSessionId = paymentStatus == PaymentStatus.Paid
+                    ? $"cs_test_seed_{confirmationCode.Replace("-", string.Empty).ToLowerInvariant()}"
+                    : null,
+                CreatedAt = today.AddDays(createdOffsetDays),
+            };
+
+            bookings.Add(booking);
+            existingBookings[confirmationCode] = booking;
+            return booking;
+        }
+
+        var customerCamry = AddBooking("SED-002", "CRS-CSTA2B", CustomerUserId, null, null, null, -46, -42, BookingStatus.Completed, PaymentStatus.Paid, -60);
+        var customerRav4 = AddBooking("SUV-002", "CRS-CSTB3C", CustomerUserId, null, null, null, 7, 12, BookingStatus.Confirmed, PaymentStatus.Paid, -4);
+        AddBooking("LUX-001", "CRS-CSTC4D", CustomerUserId, null, null, null, 18, 21, BookingStatus.Cancelled, PaymentStatus.Refunded, -2);
+        AddBooking("ELC-006", "CRS-CSTD5E", CustomerUserId, null, null, null, 3, 5, BookingStatus.Pending, PaymentStatus.Unpaid, 0);
+
+        var mayaCx5 = AddBooking("SUV-004", "CRS-MAYA4C", MayaRiveraUserId, null, null, null, -33, -28, BookingStatus.Completed, PaymentStatus.Paid, -45);
+        var noahF150 = AddBooking("TRK-001", "CRS-NOAH5D", NoahChenUserId, null, null, null, -22, -18, BookingStatus.Completed, PaymentStatus.Paid, -30);
+        var avaSienna = AddBooking("VAN-001", "CRS-AVA6EF", AvaPatelUserId, null, null, null, -16, -12, BookingStatus.Completed, PaymentStatus.Paid, -24);
+        var liamIoniq = AddBooking("ELC-003", "CRS-LIAM7F", LiamBrooksUserId, null, null, null, 11, 14, BookingStatus.Confirmed, PaymentStatus.Paid, -1);
+        AddBooking("SED-003", "CRS-DEMO8G", DemoReviewerUserId, null, null, null, -9, -6, BookingStatus.Completed, PaymentStatus.Paid, -14);
+
+        AddBooking("ECO-002", "CRS-GSTA2B", null, "Jordan Ellis", "jordan.ellis@example.com", "555-0102", -12, -10, BookingStatus.Completed, PaymentStatus.Paid, -20);
+        AddBooking("SED-007", "CRS-GSTB3C", null, "Priya Morgan", "priya.morgan@example.com", "555-0103", 5, 8, BookingStatus.Confirmed, PaymentStatus.Paid, -3);
+        AddBooking("SUV-011", "CRS-GSTC4D", null, "Mateo Silva", "mateo.silva@example.com", "555-0104", 9, 13, BookingStatus.Pending, PaymentStatus.Unpaid, 0);
+        AddBooking("ELC-010", "CRS-CLM2A7", null, "Maya Rivera", "maya.rivera@carrental.com", "555-0105", 15, 18, BookingStatus.Confirmed, PaymentStatus.Paid, -1);
+
+        await dbContext.Bookings.AddRangeAsync(bookings, cancellationToken);
+
+        var ratings = new List<Rating>();
+
+        AddRating(customerCamry, CustomerUserId, 5, "Easy pickup, clean cabin, and the Camry was perfect for a long weekend.", -39);
+        AddRating(mayaCx5, MayaRiveraUserId, 5, "The CX-5 handled mountain roads beautifully and the checkout flow was quick.", -26);
+        AddRating(noahF150, NoahChenUserId, 4, "Great truck for moving day. The bed liner and tow package were exactly what I needed.", -17);
+        AddRating(avaSienna, AvaPatelUserId, 5, "Plenty of room for the whole family and the van was spotless at pickup.", -10);
+
+        await dbContext.Ratings.AddRangeAsync(ratings, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        void AddRating(Booking? booking, Guid userId, int score, string comment, int createdOffsetDays)
+        {
+            if (booking is null || ratedBookingIds.Contains(booking.Id))
+                return;
+
+            ratings.Add(new Rating
+            {
+                Id = Guid.NewGuid(),
+                VehicleId = booking.VehicleId,
+                BookingId = booking.Id,
+                UserId = userId,
+                Score = score,
+                Comment = comment,
+                CreatedAt = today.AddDays(createdOffsetDays),
+            });
+            ratedBookingIds.Add(booking.Id);
+        }
     }
     // This Data is generated using AI.
     private static string Img(string make, string model, string color = "colourWhite", string angle = "side")
