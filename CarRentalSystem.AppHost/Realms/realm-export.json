@@ -2883,6 +2883,23 @@
       "realmRoles": ["customer"]
     },
     {
+      "id": "88888888-8888-8888-8888-888888888888",
+      "username": "demo.reviewer@carrental.com",
+      "email": "demo.reviewer@carrental.com",
+      "firstName": "Demo",
+      "lastName": "Reviewer",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Customer1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["customer"]
+    },
+    {
       "username": "service-account-carrental-admin",
       "enabled": true,
       "serviceAccountClientId": "carrental-admin",

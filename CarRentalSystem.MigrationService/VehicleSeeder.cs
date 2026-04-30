@@ -11,6 +11,7 @@ public static class VehicleSeeder
     private static readonly Guid NoahChenUserId = Guid.Parse("55555555-5555-5555-5555-555555555555");
     private static readonly Guid AvaPatelUserId = Guid.Parse("66666666-6666-6666-6666-666666666666");
     private static readonly Guid LiamBrooksUserId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+    private static readonly Guid DemoReviewerUserId = Guid.Parse("88888888-8888-8888-8888-888888888888");
 
     public static async Task SeedAsync(CarRentalSystemDbContext dbContext, CancellationToken cancellationToken = default)
     {
@@ -45,18 +46,24 @@ public static class VehicleSeeder
 
     private static async Task SeedDevelopmentActivityAsync(CarRentalSystemDbContext dbContext, CancellationToken cancellationToken)
     {
-        if (await dbContext.Bookings.AnyAsync(cancellationToken))
-            return;
-
         var licensePlates = new[]
         {
             "SED-002", "SUV-002", "LUX-001", "ELC-006", "SUV-004", "TRK-001",
-            "VAN-001", "ELC-003", "ECO-002", "SED-007", "SUV-011", "ELC-010"
+            "VAN-001", "ELC-003", "ECO-002", "SED-007", "SUV-011", "ELC-010",
+            "SED-003"
         };
 
         var vehicles = await dbContext.Vehicles
             .Where(vehicle => licensePlates.Contains(vehicle.LicensePlate))
             .ToDictionaryAsync(vehicle => vehicle.LicensePlate, cancellationToken);
+
+        var existingBookings = await dbContext.Bookings
+            .Where(booking => booking.ConfirmationCode.StartsWith("CRS-"))
+            .ToDictionaryAsync(booking => booking.ConfirmationCode, cancellationToken);
+
+        var ratedBookingIds = await dbContext.Ratings
+            .Select(rating => rating.BookingId)
+            .ToHashSetAsync(cancellationToken);
 
         var today = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
         var bookings = new List<Booking>();
@@ -74,6 +81,9 @@ public static class VehicleSeeder
             PaymentStatus paymentStatus,
             int createdOffsetDays)
         {
+            if (existingBookings.TryGetValue(confirmationCode, out var existingBooking))
+                return existingBooking;
+
             if (!vehicles.TryGetValue(licensePlate, out var vehicle))
                 return null;
 
@@ -102,6 +112,7 @@ public static class VehicleSeeder
             };
 
             bookings.Add(booking);
+            existingBookings[confirmationCode] = booking;
             return booking;
         }
 
@@ -114,6 +125,7 @@ public static class VehicleSeeder
         var noahF150 = AddBooking("TRK-001", "CRS-NOAH5D", NoahChenUserId, null, null, null, -22, -18, BookingStatus.Completed, PaymentStatus.Paid, -30);
         var avaSienna = AddBooking("VAN-001", "CRS-AVA6EF", AvaPatelUserId, null, null, null, -16, -12, BookingStatus.Completed, PaymentStatus.Paid, -24);
         var liamIoniq = AddBooking("ELC-003", "CRS-LIAM7F", LiamBrooksUserId, null, null, null, 11, 14, BookingStatus.Confirmed, PaymentStatus.Paid, -1);
+        AddBooking("SED-003", "CRS-DEMO8G", DemoReviewerUserId, null, null, null, -9, -6, BookingStatus.Completed, PaymentStatus.Paid, -14);
 
         AddBooking("ECO-002", "CRS-GSTA2B", null, "Jordan Ellis", "jordan.ellis@example.com", "555-0102", -12, -10, BookingStatus.Completed, PaymentStatus.Paid, -20);
         AddBooking("SED-007", "CRS-GSTB3C", null, "Priya Morgan", "priya.morgan@example.com", "555-0103", 5, 8, BookingStatus.Confirmed, PaymentStatus.Paid, -3);
@@ -134,7 +146,7 @@ public static class VehicleSeeder
 
         void AddRating(Booking? booking, Guid userId, int score, string comment, int createdOffsetDays)
         {
-            if (booking is null)
+            if (booking is null || ratedBookingIds.Contains(booking.Id))
                 return;
 
             ratings.Add(new Rating
@@ -147,6 +159,7 @@ public static class VehicleSeeder
                 Comment = comment,
                 CreatedAt = today.AddDays(createdOffsetDays),
             });
+            ratedBookingIds.Add(booking.Id);
         }
     }
     // This Data is generated using AI.
