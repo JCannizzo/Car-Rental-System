@@ -7,13 +7,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ApiError, fetchMyBookings } from "@/lib/api";
+import {
+  ApiError,
+  createRating,
+  fetchMyBookings,
+  fetchMyRatings,
+  type BookingDetails,
+} from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
-import { useQuery } from "@tanstack/react-query";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { cn } from "@/lib/utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
-import { Loader2 } from "lucide-react";
-import { useEffect } from "react";
+import { CheckCircle2, Loader2, Star } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 export const Route = createFileRoute("/bookings")({
   component: MyBookingsPage,
@@ -34,6 +52,13 @@ function MyBookingsPage() {
     enabled: auth.isReady && auth.isAuthenticated,
     queryFn: fetchMyBookings,
     queryKey: ["my-bookings"],
+    retry: false,
+  });
+
+  const { data: ratings, isLoading: isLoadingRatings } = useQuery({
+    enabled: auth.isReady && auth.isAuthenticated,
+    queryFn: fetchMyRatings,
+    queryKey: ["my-ratings"],
     retry: false,
   });
 
@@ -84,6 +109,7 @@ function MyBookingsPage() {
   }
 
   const bookings = data ?? [];
+  const reviewedBookingIds = new Set((ratings ?? []).map((rating) => rating.bookingId));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
@@ -131,24 +157,214 @@ function MyBookingsPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
-                <div>
-                  <p className="font-medium text-foreground">Pick-up</p>
-                  <p>{format(parseISO(booking.startDate), "EEEE, MMM d, yyyy")}</p>
+              <CardContent className="flex flex-col gap-4">
+                <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
+                  <div>
+                    <p className="font-medium text-foreground">Pick-up</p>
+                    <p>{format(parseISO(booking.startDate), "EEEE, MMM d, yyyy")}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Return</p>
+                    <p>{format(parseISO(booking.endDate), "EEEE, MMM d, yyyy")}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Total</p>
+                    <p>${booking.totalPrice}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-foreground">Return</p>
-                  <p>{format(parseISO(booking.endDate), "EEEE, MMM d, yyyy")}</p>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Total</p>
-                  <p>${booking.totalPrice}</p>
-                </div>
+                <BookingReviewAction
+                  booking={booking}
+                  hasReview={reviewedBookingIds.has(booking.id)}
+                  isCheckingReview={isLoadingRatings}
+                />
               </CardContent>
             </Card>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function BookingReviewAction({
+  booking,
+  hasReview,
+  isCheckingReview,
+}: {
+  booking: BookingDetails;
+  hasReview: boolean;
+  isCheckingReview: boolean;
+}) {
+  if (booking.status !== "Completed") {
+    return null;
+  }
+
+  if (isCheckingReview) {
+    return (
+      <Button variant="outline" className="w-fit" disabled>
+        <Loader2 data-icon="inline-start" className="animate-spin" />
+        Checking review
+      </Button>
+    );
+  }
+
+  if (hasReview) {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm text-muted-foreground">
+        <CheckCircle2 className="text-primary" />
+        Reviewed
+      </div>
+    );
+  }
+
+  return <ReviewDialog booking={booking} />;
+}
+
+function ReviewDialog({ booking }: { booking: BookingDetails }) {
+  const queryClient = useQueryClient();
+  const [isOpen, setIsOpen] = useState(false);
+  const [score, setScore] = useState(0);
+  const [comment, setComment] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const commentLength = comment.trim().length;
+  const mutation = useMutation({
+    mutationFn: () =>
+      createRating({
+        bookingId: booking.id,
+        score,
+        comment: comment.trim() || undefined,
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["my-bookings"] }),
+        queryClient.invalidateQueries({ queryKey: ["my-ratings"] }),
+        queryClient.invalidateQueries({ queryKey: ["ratings"] }),
+      ]);
+      setIsOpen(false);
+      setScore(0);
+      setComment("");
+      setValidationError(null);
+    },
+  });
+
+  const errorMessage = useMemo(() => {
+    if (validationError) return validationError;
+    if (mutation.error instanceof Error) return mutation.error.message;
+    return null;
+  }, [mutation.error, validationError]);
+
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    mutation.reset();
+
+    if (score < 1) {
+      setValidationError("Choose a rating before submitting.");
+      return;
+    }
+
+    if (comment.length > 1000) {
+      setValidationError("Keep your review under 1,000 characters.");
+      return;
+    }
+
+    setValidationError(null);
+    mutation.mutate();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="w-fit">
+          <Star data-icon="inline-start" />
+          Leave review
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Rate your rental</DialogTitle>
+          <DialogDescription>
+            Share a short note about your experience with {booking.vehicleSummary}.
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+          <FieldGroup>
+            <Field data-invalid={score < 1 && Boolean(errorMessage)}>
+              <FieldLabel>Rating</FieldLabel>
+              <div className="flex gap-1">
+                {Array.from({ length: 5 }).map((_, index) => {
+                  const value = index + 1;
+                  const isActive = value <= score;
+
+                  return (
+                    <Button
+                      key={value}
+                      type="button"
+                      variant="ghost"
+                      size="icon-lg"
+                      className="rounded-md"
+                      aria-label={`${value} star${value === 1 ? "" : "s"}`}
+                      aria-pressed={isActive}
+                      onClick={() => {
+                        setScore(value);
+                        setValidationError(null);
+                      }}
+                    >
+                      <Star
+                        className={cn(
+                          "text-muted-foreground",
+                          isActive && "fill-current text-primary",
+                        )}
+                      />
+                    </Button>
+                  );
+                })}
+              </div>
+            </Field>
+
+            <Field data-invalid={comment.length > 1000}>
+              <FieldLabel htmlFor={`review-comment-${booking.id}`}>
+                Comment
+              </FieldLabel>
+              <Textarea
+                id={`review-comment-${booking.id}`}
+                value={comment}
+                maxLength={1000}
+                aria-invalid={comment.length > 1000}
+                placeholder="What went well?"
+                onChange={(event) => setComment(event.target.value)}
+              />
+              <p className="text-sm text-muted-foreground">
+                {commentLength}/1000 characters
+              </p>
+            </Field>
+
+            {errorMessage && <FieldError>{errorMessage}</FieldError>}
+          </FieldGroup>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsOpen(false)}
+              disabled={mutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? (
+                <>
+                  <Loader2 data-icon="inline-start" className="animate-spin" />
+                  Submitting
+                </>
+              ) : (
+                "Submit review"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

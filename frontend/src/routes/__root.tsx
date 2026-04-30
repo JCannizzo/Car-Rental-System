@@ -35,8 +35,7 @@ function RootLayout() {
                   Browse
                 </Link>
                 <Link
-                  to="/"
-                  hash="testimonials"
+                  to="/testimonials"
                   className="hover:text-primary"
                 >
                   Testimonials

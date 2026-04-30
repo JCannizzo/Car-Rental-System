@@ -150,6 +150,39 @@ export interface ClaimBookingResponse {
   redirectTo: string;
 }
 
+export interface CreateRatingRequest {
+  bookingId: string;
+  score: number;
+  comment?: string;
+}
+
+export interface Rating {
+  id: string;
+  vehicleId: string;
+  vehicleSummary: string;
+  bookingId: string;
+  userId: string;
+  score: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface PublicRating {
+  id: string;
+  vehicleId: string;
+  vehicleSummary: string;
+  score: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface VehicleRatingSummary {
+  vehicleId: string;
+  averageRating: number;
+  totalRatings: number;
+  ratings: Rating[];
+}
+
 export class ApiError extends Error {
   public status: number;
 
@@ -252,6 +285,51 @@ export async function fetchMyBookings(): Promise<BookingDetails[]> {
 
   if (!response.ok) {
     throw await readApiError(response, "Failed to fetch your bookings");
+  }
+
+  return response.json();
+}
+
+export async function fetchRatings(): Promise<PublicRating[]> {
+  const response = await apiFetch("/api/ratings");
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch ratings");
+  }
+
+  return response.json();
+}
+
+export async function fetchVehicleRatings(
+  vehicleId: string,
+): Promise<VehicleRatingSummary> {
+  const response = await apiFetch(`/api/ratings/vehicle/${vehicleId}`);
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch vehicle ratings");
+  }
+
+  return response.json();
+}
+
+export async function fetchMyRatings(): Promise<Rating[]> {
+  const response = await apiFetch("/api/ratings/my");
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to fetch your ratings");
+  }
+
+  return response.json();
+}
+
+export async function createRating(data: CreateRatingRequest): Promise<Rating> {
+  const response = await apiFetch("/api/ratings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to submit rating");
   }
 
   return response.json();
