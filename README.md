@@ -185,7 +185,15 @@ After startup, the terminal output will display URLs. Look for:
 <img width="624" height="624" alt="Picture2" src="https://github.com/user-attachments/assets/b3ac6f67-491a-44ed-a0ba-05a80f108bb9" />
 
 ---
+## Admin Credentials
 
+| Field    | Value               |
+|----------|---------------------|
+| Username | admin@carrental.com |
+| Email    | admin@carrental.com |
+| Password | Admin1234!          |
+
+---
 ## Stripe Setup (Payments)
 
 To enable local payment functionality, you need to install the Stripe CLI and configure your Stripe API key.
