@@ -162,13 +162,15 @@ public class VehicleService : IVehicleService
         if (!string.IsNullOrWhiteSpace(query.Category) &&
             !string.Equals(query.Category, "all", StringComparison.OrdinalIgnoreCase))
         {
-            vehiclesQuery = vehiclesQuery.Where(v => v.Category == ParseCategory(query.Category));
+            var category = ParseCategory(query.Category);
+            vehiclesQuery = vehiclesQuery.Where(v => v.Category == category);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Status) &&
             !string.Equals(query.Status, "all", StringComparison.OrdinalIgnoreCase))
         {
-            vehiclesQuery = vehiclesQuery.Where(v => v.VehicleStatus == ParseStatus(query.Status));
+            var status = ParseStatus(query.Status);
+            vehiclesQuery = vehiclesQuery.Where(v => v.VehicleStatus == status);
         }
 
         var totalCount = await vehiclesQuery.CountAsync();
