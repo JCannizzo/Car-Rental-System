@@ -543,3 +543,13 @@ export async function deleteVehicle(id: string): Promise<void> {
     throw await readApiError(response, "Failed to delete vehicle");
   }
 }
+
+export async function markVehicleAsReady(vehicleId: string): Promise<void> {
+  const response = await apiFetch(`/api/Vehicle/${vehicleId}/ready`, {
+    method: "PATCH",
+  });
+
+  if (!response.ok) {
+    throw await readApiError(response, "Failed to mark vehicle as ready");
+  }
+}
