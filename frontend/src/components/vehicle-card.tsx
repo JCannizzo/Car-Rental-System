@@ -19,11 +19,34 @@ function VehicleCard({
       className="group grid gap-4 rounded-lg border border-border bg-card p-3 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/10 sm:grid-cols-[180px_1fr] sm:p-4 lg:grid-cols-[220px_1fr_auto]"
     >
       <div className="relative overflow-hidden rounded-md bg-card">
-        <img
-          src={vehicle.imageUrl}
-          alt={`${vehicle.make} ${vehicle.model}`}
-          className="aspect-[16/10] h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-        />
+        {vehicle.imageUrl ? (
+          <img
+            src={vehicle.imageUrl}
+            alt={`${vehicle.make} ${vehicle.model}`}
+            className="aspect-[16/10] h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex aspect-[16/10] w-full flex-col items-center justify-center gap-2 bg-muted">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 64 40"
+              className="h-16 w-16 text-muted-foreground/40"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2" y="12" width="60" height="22" rx="4" />
+              <path d="M10 12 L18 2 H46 L54 12" />
+              <circle cx="14" cy="34" r="5" />
+              <circle cx="50" cy="34" r="5" />
+            </svg>
+            <span className="text-xs font-medium text-muted-foreground/60">
+              Photo Pending
+            </span>
+          </div>
+        )}
         <span className="absolute left-3 top-3 rounded-md border border-card/70 bg-card/90 px-2.5 py-1 text-xs font-bold text-primary shadow-sm backdrop-blur">
           {vehicle.category}
         </span>
