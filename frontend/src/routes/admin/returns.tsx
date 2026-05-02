@@ -42,7 +42,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   ApiError,
-  fetchAdminBookings,
+fetchAdminBookings,
+  markVehicleAsReady,
   returnAdminBooking,
   type AdminBooking,
   type ReturnBookingRequest,
@@ -112,6 +113,7 @@ function AdminReturnsPage() {
   const [actionError, setActionError] = useState("");
   const debouncedSearch = useDebouncedValue(search, SEARCH_DEBOUNCE_MS);
 
+  
   const returnsQuery = useQuery({
     enabled: isAllowed,
     placeholderData: keepPreviousData,
@@ -157,6 +159,20 @@ function AdminReturnsPage() {
       await queryClient.invalidateQueries({ queryKey: ["admin-vehicles"] });
     },
   });
+
+const markReadyMutation = useMutation({
+  mutationFn: (vehicleId: string) => markVehicleAsReady(vehicleId),
+  onError: () => {
+    setActionError("Failed to mark vehicle as ready.");
+  },
+  onSuccess: async () => {
+    setActionError("");
+    setActionMessage("Vehicle is now marked as Available.");
+    await queryClient.invalidateQueries({ queryKey: ["admin-returns"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin-vehicle-inventory"] });
+    await queryClient.invalidateQueries({ queryKey: ["admin-vehicles"] });
+  },
+});
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);
@@ -238,6 +254,7 @@ function AdminReturnsPage() {
             page={page}
             pageSize={PAGE_SIZE}
             totalCount={returnsQuery.data?.totalCount ?? 0}
+            onMarkReady={(vehicleId) => markReadyMutation.mutate(vehicleId)}
             onOpenReturn={setSelectedBooking}
             onPageChange={setPage}
           />
@@ -296,6 +313,7 @@ function ReturnsTable({
   page,
   pageSize,
   totalCount,
+  onMarkReady,
   onOpenReturn,
   onPageChange,
 }: {
@@ -305,6 +323,7 @@ function ReturnsTable({
   page: number;
   pageSize: number;
   totalCount: number;
+  onMarkReady: (vehicleId: string) => void;
   onOpenReturn: (booking: AdminBooking) => void;
   onPageChange: (page: number) => void;
 }) {
@@ -367,7 +386,21 @@ function ReturnsTable({
                     {new Intl.NumberFormat("en-US").format(booking.vehicleMileage)} mi
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-2">
+                      {booking.vehicleStatus === "Returned" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-green-600 text-green-600 hover:bg-green-50"
+                          onClick={() => {
+                            if (confirm("Is this vehicle cleaned and ready for the next customer?")) {
+                              onMarkReady(booking.vehicleId);
+                            }
+                          }}
+                        >
+                          Mark as Ready
+                        </Button>
+                      )}
                       <Button size="sm" onClick={() => onOpenReturn(booking)}>
                         <RotateCcw data-icon="inline-start" />
                         Check in
